@@ -1,0 +1,10 @@
+# config.yaml
+paths:
+  prompt_yaml: "./prompt_assets/prompt.yaml"
+  examples_json: "./prompt_assets/examples.json"
+  examples_path: "./prompt_assets/examples"
+  curriculum_csv: "./prompt_assets/curriculum.csv"
+  results_path: "./results"
+  dataset_path: "./tools_data_latest.json"
+  redis_schema: "./redis_schema.yaml"
+  hf_dataset_path: "interstellarninja/tool-calls-sharegpt"
