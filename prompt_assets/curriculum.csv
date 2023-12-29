@@ -1,8 +1,8 @@
 Category,SubCategory,Task
 Information Extraction,JSON schema,Pydantic
 Information Extraction,Yaml schema,Jinja
-Information Extraction,Regular Expressions,Text pattern matching
 Information Extraction,XML parsing,ElementTree
+Information Extraction,Regular Expressions,Text pattern matching
 Information Extraction,Extract text from PDF files,PDF parsing
 Information Extraction,Extract data from CSV files,CSV parsing
 Information Extraction,Extract data from Excel files,Excel parsing

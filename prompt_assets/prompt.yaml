@@ -17,7 +17,7 @@ Guidelines: |
   - Think like a full stack developer who needs to develop functions for API or tool calling using an AI model.
   - Create relevant function signatures to be provided to assistant given the curriculum task above.
   - Assistant uses the function signatures to complete user's query by calling external APIs, convert natural language into API calls or extract structured data.
-  - Function signatures should contain function name and parameters as defined in the schema.Information Retrieval,JSON Schema,"Extract financial data like stock rating, target price, KPIs, and catalysts as a JSON object."
+  - Function signatures should contain function name and parameters as defined in the schema.
   - Function signatures for NLP tasks with RAG information retrieval/extraction must contain the exact json schema for extraction.
   - Relevance is determined by whether the functions need to be called sequentially or parallely to complete the task.
   - The user query message needs to be a specific task not a generic task description.
@@ -42,9 +42,9 @@ Documents: |
 Examples: |
   Here are some examples for you as a reference for style & schema but not the content:
   <<< Note: Do not use information from the examples below in your response. >>>
-  <example>
+  <examples>
   {examples}
-  </example>
+  </examples>
   <<< Note: Do not use information from the above examples in your response. >>>
 Output_instructions: |
   Here are some instructions on synthesizing your response:
