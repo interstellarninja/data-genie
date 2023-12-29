@@ -1,0 +1,235 @@
+[
+    {
+        "messages": [
+          {
+            "role": "user",
+            "content": "What's the weather in San Francisco today? And what does the 5 day forecast look like in San Francisco?"
+          },
+          {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_ur6F46uLbvxHgpOuoSMqURF9",
+                "function": {
+                  "arguments": {"location": "San Francisco, CA", "unit": "fahrenheit"},
+                  "name": "get_current_weather",
+                  "type": "function"
+                }
+              },
+              {
+                "id": "call_PHxjfJx29UbQXSQS5G3ZXoLz",
+                "function": {
+                  "arguments": {"location": "San Francisco, CA", "format": "fahrenheit", "num_days": 5},
+                  "name": "get_n_day_weather_forecast",
+                  "type": "function"
+                }
+              }
+            ]
+          },
+          {
+            "role": "tool",
+            "tool_call_id": "call_ur6F46uLbvxHgpOuoSMqURF9",
+            "name": "get_current_weather",
+            "content": {"location": "San Francisco", "temperature": "72", "unit": "fahrenheit"}
+          },
+          {
+            "role": "tool",
+            "tool_call_id": "call_PHxjfJx29UbQXSQS5G3ZXoLz",
+            "name": "get_n_day_weather_forecast",
+            "content": {"location": "San Francisco, CA", "forecast": [{"date": "2023-12-27", "temperature": "70", "unit": "fahrenheit", "description": "Sunny"}, {"date": "2023-12-28", "temperature": "68", "unit": "fahrenheit", "description": "Partly Cloudy"}, {"date": "2023-12-29", "temperature": "72", "unit": "fahrenheit", "description": "Sunny"}, {"date": "2023-12-30", "temperature": "75", "unit": "fahrenheit", "description": "Clear"}, {"date": "2023-12-31", "temperature": "74", "unit": "fahrenheit", "description": "Partly Cloudy"}], "unit": "fahrenheit"}
+          },
+          {
+            "role": "assistant",
+            "content": "The current weather in San Francisco is 72°F.\n\nHere is the 5-day forecast for San Francisco:\n\n- **December 27, 2023**: Sunny, with a temperature of 70°F.\n- **December 28, 2023**: Partly cloudy, with a temperature of 68°F.\n- **December 29, 2023**: Sunny, with a temperature of 72°F.\n- **December 30, 2023**: Clear, with a temperature of 75°F.\n- **December 31, 2023**: Partly cloudy, with a temperature of 74°F.",
+            "tool_calls": null
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "get_current_weather",
+              "description": "Get the current weather in a given location",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "location": {
+                    "type": "string",
+                    "description": "The city and state, e.g. San Francisco, CA"
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": ["celsius", "fahrenheit"]
+                  }
+                },
+                "required": ["location"]
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_n_day_weather_forecast",
+              "description": "Get an N-day weather forecast",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "location": {
+                    "type": "string",
+                    "description": "The city and state, e.g. San Francisco, CA"
+                  },
+                  "format": {
+                    "type": "string",
+                    "enum": ["celsius", "fahrenheit"],
+                    "description": "The temperature unit to use. Infer this from the user's location."
+                  },
+                  "num_days": {
+                    "type": "integer",
+                    "description": "The number of days to forecast"
+                  }
+                },
+                "required": ["location", "format", "num_days"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": "I need to find the top news articles about artificial intelligence today. Can you perform a search using DuckDuckGo and provide me with the results?"
+          },
+          {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_01",
+                "function": {
+                  "arguments": {"query": "top news about artificial intelligence today", "format": "json", "no_redirect": "1", "no_html": "1"},
+                  "name": "search_duckduckgo",
+                  "type": "function"
+                }
+              }
+            ]
+          },
+          {
+            "role": "tool",
+            "tool_call_id": "call_01",
+            "name": "search_duckduckgo",
+            "content": {
+              "name": "search_duckduckgo",
+              "arguments": {
+                "query": "top news about artificial intelligence today",
+                "format": "json",
+                "no_redirect": "1",
+                "no_html": "1"
+              }
+            }
+          },
+          {
+            "role": "assistant",
+            "content": "Here are the top news articles about artificial intelligence from DuckDuckGo:",
+            "tool_calls": null
+          }
+        ],
+        "tools": [
+          {
+            "name": "search_duckduckgo",
+            "description": "Perform a search on DuckDuckGo and retrieve the results.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string",
+                  "description": "The search query string.",
+                  "enum": null
+                },
+                "format": {
+                  "type": "string",
+                  "description": "The format in which to return the results.",
+                  "enum": {
+                    "json": "JSON format",
+                    "xml": "XML format"
+                  }
+                },
+                "no_redirect": {
+                  "type": "string",
+                  "description": "Whether to prevent redirection to external websites.",
+                  "enum": {
+                    "1": "Prevent redirection",
+                    "0": "Allow redirection"
+                  }
+                },
+                "no_html": {
+                  "type": "string",
+                  "description": "Whether to exclude HTML from the results.",
+                  "enum": {
+                    "1": "Exclude HTML",
+                    "0": "Include HTML"
+                  }
+                }
+              },
+              "required": ["query"]
+            }
+          },
+          {
+            "name": "get_related_topics",
+            "description": "Retrieve related topics for a given search query from DuckDuckGo.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string",
+                  "description": "The search query string to find related topics for.",
+                  "enum": null
+                },
+                "format": {
+                  "type": "string",
+                  "description": "The format in which to return the related topics.",
+                  "enum": {
+                    "json": "JSON format",
+                    "xml": "XML format"
+                  }
+                }
+              },
+              "required": ["query"]
+            }
+          },
+          {
+            "name": "get_instant_answer",
+            "description": "Get an instant answer for a given search query from DuckDuckGo.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string",
+                  "description": "The search query string to get an instant answer for.",
+                  "enum": null
+                },
+                "format": {
+                  "type": "string",
+                  "description": "The format in which to return the instant answer.",
+                  "enum": {
+                    "json": "JSON format",
+                    "xml": "XML format"
+                  }
+                },
+                "skip_disambig": {
+                  "type": "string",
+                  "description": "Whether to skip disambiguation of the query.",
+                  "enum": {
+                    "1": "Skip disambiguation",
+                    "0": "Do not skip"
+                  }
+                }
+              },
+              "required": ["query"]
+            }
+          }
+        ]
+      }
+      
+]

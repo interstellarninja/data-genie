@@ -1,0 +1,51 @@
+[
+    {
+      "conversations": [
+        {
+          "from": "system",
+          "value": "You are a function calling AI model. You have access to a set of tools you can use to answer the user's question. You can use the following function signatures delimited within XML tags <functions></functions>. You will respond with a JSON object using the schema provided below. You can only call one function at a time. <functions>tools: [{\"type\": \"function\", \"function\": {\"name\": \"get_current_weather\", \"description\": \"Get the current weather\", \"parameters\": {\"type\": \"object\", \"properties\": {\"location\": {\"type\": \"string\", \"description\": \"The city and state, e.g., San Francisco, CA\"}}, \"required\": [\"location\"]}}}, {\"type\": \"function\", \"function\": {\"name\": \"get_n_day_weather_forecast\", \"description\": \"Get an N-day weather forecast\", \"parameters\": {\"type\": \"object\", \"properties\": {\"location\": {\"type\": \"string\", \"description\": \"The city and state, e.g., San Francisco, CA\"}, \"format\": {\"type\": \"string\", \"enum\": [\"celsius\", \"fahrenheit\"], \"description\": \"The temperature unit to use. Infer this from the user's location.\"}, \"num_days\": {\"type\": \"integer\", \"description\": \"The number of days to forecast\"}}, \"required\": [\"location\", \"format\", \"num_days\"]}}}]</functions>"
+        },
+        {
+          "from": "human",
+          "value": "What is the weather like in Boston?"
+        },
+        {
+          "from": "gpt",
+          "value": "{\"name\": \"get_current_weather\", \"arguments\": {\"location\": \"Boston, MA\"}}"
+        },
+        {
+          "from": "function",
+          "value": "{\"name\": \"get_current_weather\", \"content\": {\"temperature\": 22, \"unit\": \"celsius\", \"description\": \"Sunny\"}}"
+        },
+        {
+          "from": "gpt",
+          "value": "The weather in Boston is currently sunny with a temperature of 22 degrees Celsius."
+        }
+      ]
+    },
+    {
+      "conversations": [
+        {
+          "from": "system",
+          "value": "You are a function calling AI model. You have access to a set of tools you can use to answer the user's question. You can use the following function signatures delimited within XML tags <functions></functions>. You will respond with a JSON object using the schema provided below. You can only call one function at a time. <functions>tools: [{\"type\": \"function\", \"function\": {\"name\": \"search_duckduckgo\", \"description\": \"Search DuckDuckGo for information\", \"parameters\": {\"type\": \"object\", \"properties\": {\"query\": {\"type\": \"string\", \"description\": \"The search query\"}}, \"required\": [\"query\"]}}}]</functions>"
+        },
+        {
+          "from": "human",
+          "value": "Can you search for information on Python programming language?"
+        },
+        {
+          "from": "gpt",
+          "value": "{\"name\": \"search_duckduckgo\", \"arguments\": {\"query\": \"Python programming language\"}}"
+        },
+        {
+          "from": "function",
+          "value": "{\"name\": \"search_duckduckgo\", \"content\": {\"results\": [{\"title\": \"Python (programming language) - Wikipedia\", \"url\": \"https://en.wikipedia.org/wiki/Python_(programming_language)\"}, {\"title\": \"Python - Official Site\", \"url\": \"https://www.python.org/\"}, {\"title\": \"Python Tutorial - W3Schools\", \"url\": \"https://www.w3schools.com/python/\"}]}}"
+        },
+        {
+          "from": "gpt",
+          "value": "Here are some search results for Python programming language:\n\n1. Python (programming language) - Wikipedia\n   URL: [https://en.wikipedia.org/wiki/Python_(programming_language)](https://en.wikipedia.org/wiki/Python_(programming_language))\n\n2. Python - Official Site\n   URL: [https://www.python.org/](https://www.python.org/)\n\n3. Python Tutorial - W3Schools\n   URL: [https://www.w3schools.com/python/](https://www.w3schools.com/python/)"
+        }
+      ]
+    }
+  ]
+  
