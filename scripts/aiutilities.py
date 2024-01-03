@@ -3,8 +3,8 @@ from dotenv import load_dotenv
 from schema import OutputSchema
 
 #import together
-#from anthropic import Anthropic
 from openai import OpenAI, AzureOpenAI
+#from anthropic import Anthropic
 
 class AIUtilities:
     def __init__(self):
@@ -73,6 +73,27 @@ class AIUtilities:
                 response_format={"type": "json_object"},
             )
             return response.choices[0].message.content
+        except Exception as e:
+            return str(e)
+        
+    def run_ai_tool_completion(self, messages, tools, tool_choice="auto", json=False):
+        client = OpenAI(
+            api_key=self.openai_key,
+        )
+        if json:
+            response_format = {"type": "json_object"}
+        else:
+            response_format = None
+        try:    
+            response = client.chat.completions.create(
+                model=self.openai_model,
+                messages=messages,
+                tools=tools,
+                tool_choice=tool_choice,
+                response_format=response_format
+            )
+            completion = response.choices[0].message
+            return completion
         except Exception as e:
             return str(e)
 
@@ -161,19 +182,3 @@ class AIUtilities:
             return response["choices"][0]["message"]["content"]
         except Exception as e:
             return str(e)
-
-def main():
-    load_dotenv()  # Load environment variables from .env file
-
-    ai_utilities = AIUtilities()
-
-    # Example usage
-    prompt = "Tell me a programmer joke"
-    ai_vendor = "openai"  # Change this to the desired AI vendor
-
-    # Run AI completion
-    result = ai_utilities.run_ai_completion(prompt, ai_vendor)
-    print(f"AI Completion Result:\n{result}")
-
-if __name__ == "__main__":
-    main()
