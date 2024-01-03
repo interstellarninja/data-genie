@@ -41,6 +41,8 @@ def combine_search_result_documents(search_results, char_limit):
             combined_text += f'{cleaned_content}'
 
             combined_text += '\n</doc>\n'
+            logger.info(f"Document from {url} added to the combined text")
+    return combined_text
 
 def combine_examples(docs):
     examples = ""
