@@ -51,7 +51,7 @@ class DataGenPipeline:
         self.ai_utilities = AIUtilities()
         self.web_search_client = WebSearch()
         self.vector_db = None
-        #self.promptmanager = PromptManager(self.config)
+        self.vector_db_lock = threading.Lock()
         self.file_write_lock = threading.Lock()
 
     def retrieve_and_combine_documents(self, query, num_results, folder_path, char_limit):
@@ -86,30 +86,43 @@ class DataGenPipeline:
         except Exception as e:
             return f"Exception in the loop: {e}"
     
-    def retrieve_and_combine_examples(self, query, results_path, num_examples=2):
-        # Create an instance of the VectorDB class
-        if not self.vector_db:
-            self.vector_db = VectorDB()
+    def initialize_vector_db(self):
             schema_path = self.config["paths"]["redis_schema"]
             examples_path = self.config["paths"]["examples_path"]
-
-            # Try loading the existing VectorDB
+            results_path = self.config["paths"]["results_corrected"]
+            self.vector_db = VectorDB()
             try:
-                if not self.vector_db.load_vector_store(schema_path):
-                    # Loading failed, so initialize VectorDB
-                    print("Loading existing VectorDB failed. Initializing...")
+                self.vector_db.load_vector_store(schema_path)
+                print("Existing VectorDB loaded successfully.")
+            except Exception as load_error:
+                print(f"Loading existing VectorDB failed: {load_error}. Initializing...")
+                try:
                     self.vector_db.initialize_vector_store(examples_path, schema_path)
-                    if os.path.exists(results_path) and os.listdir(results_path):
-                        documents = self.vector_db.load_documents_from_folder(results_path)
-                        self.vector_db.rds.add_documents(documents)
-                else:
-                    print("Existing VectorDB loaded successfully.")
-            except Exception as e:
-                print("Exception occurred:", e)
-                logger.info(f"Couldn't load existing index: {e}")
+                    print("VectorDB initialized successfully.")
+                    try:
+                        if os.path.exists(results_path) and os.listdir(results_path):
+                            documents = []
+                            for root, dirs, files in os.walk(results_path):
+                                for file in files:
+                                    if file.endswith("json"):
+                                        file_path = os.path.join(root, file)
+                                        document = self.vector_db.load_document_from_file(file_path)
+                                        documents.extend(document)
+                            self.vector_db.rds.add_documents(documents)
+                            print("Previous results added to examples index")
+                    except Exception as e:
+                        print(f"Loading previous examples failed: {e}")
+                except Exception as init_error:
+                    print("Initialization failed:", init_error)
+                    logger.error(f"VectorDB initialization failed: {init_error}")
 
-        retrieved_docs = self.vector_db.perform_similarity_search(query, num_examples)
-        combined_examples = utils.combine_examples(retrieved_docs, type="reversegen")
+    def retrieve_and_combine_examples(self, query, num_examples=2):
+        try:
+            retrieved_docs = self.vector_db.perform_similarity_search(query, num_examples)
+            combined_examples = utils.combine_examples(retrieved_docs, type=None)
+        except Exception as e:
+            print(f"Error combining examples: {e}")
+            combined_examples = ""
         return combined_examples
 
     def save_and_index_results(self, file_path, completion, task_desc):
@@ -119,31 +132,36 @@ class DataGenPipeline:
                     json.dump(completion, json_file, indent=2)
                 logger.debug(f"Lock released for {task_desc}")
 
-            logger.info(f"Results for {task_desc} saved successfully at {file_path}")
+                logger.info(f"Results for {task_desc} saved successfully at {file_path}")
 
-            # index the result to vectordb for example selection
-            document = Document(
-                page_content=completion,
-                metadata={
-                    "source": file_path
-                }
-            )
-            self.vector_db.rds.add_documents([document])
-
+                # index the result to vectordb for example selection
+                try: 
+                    document = Document(
+                        page_content=f"{json.dumps(completion)}",
+                        metadata={
+                            "source": file_path
+                        }
+                    )
+                    self.vector_db.rds.add_documents([document])
+                except Exception as e:
+                    logger.debug(f"Error indexing newly generated example for {task_desc}: {str(e)}")
         except Exception as e:
             logger.debug(f"Error extracting and saving results for {task_desc}: {str(e)}")
         finally:
             # Ensure that the lock is always released
             self.file_write_lock.release()
 
+
+
     def run_generation_prompt(self, variables, tools, prompt_type, json_object=False):
         prompt_yaml_path = self.config["paths"][prompt_type]
         prompt_manager = PromptManager(self.config)
         prompt_text = prompt_manager.generate_prompt(variables, prompt_yaml_path)
         messages = [
+
             {"role": "user", "content": prompt_text}
-        ]  
-        response = self.ai_utilities.run_ai_tool_completion(messages, tools, tool_choice="none", json=json_object) 
+        ] 
+        response = self.ai_utilities.run_ai_tool_completion(messages, tools, tool_choice="none", json=json_object)
         return response.content
     
     @retry(wait=wait_random_exponential(multiplier=1, max=30), stop=stop_after_attempt(3))
@@ -159,12 +177,13 @@ class DataGenPipeline:
         task_desc = f"{task[0]}_{task[1]}_{task[2]}"
         task_desc = task_desc.replace(' ', '_')
         results_path = self.config["paths"]["results_generated"]
+        
         #results_path = f"{results_path}/{ai_vendor}_{today_date}"
         corrected_results_path = os.path.join(os.getcwd(), f"{results_path}_corrected", task[0], task[1])
         results_path = os.path.join(os.getcwd(), results_path, task[0], task[1])
         results_path = results_path.replace(' ', '_')
         corrected_results_path = corrected_results_path.replace(' ', '_')
-        os.makedirs(results_path, exist_ok=True)
+        os.makedirs(corrected_results_path, exist_ok=True)
 
         file_path = os.path.join(results_path, f"{task[2]}.json")
         file_path = file_path.replace(' ', '_')
@@ -173,10 +192,10 @@ class DataGenPipeline:
         # Check if the file already exists
         if not os.path.exists(corrected_file_path):
             ctx_len = self.ai_utilities.get_ai_context_length(ai_vendor)
-            char_limit = (int(ctx_len) - 8000) * 4
+            char_limit = (int(ctx_len) - 8000) * 2
             logger.info(f"The character limit for documents is:{char_limit}")
             combined_documents = self.retrieve_and_combine_documents(query, num_results, folder_path, char_limit)
-            combined_examples = self.retrieve_and_combine_examples(query, corrected_results_path, num_examples=2)
+            combined_examples = self.retrieve_and_combine_examples(query, num_examples=2)
             # Set variables for prompt YAML
             variables = {
                 "category": task[0],
@@ -191,60 +210,66 @@ class DataGenPipeline:
                 json_file = json.load(f)
 
             messages = json_file["messages"]
+           
             tool_messages = []
             for message in messages:
                 if message["role"] == "user":
-                    user_message = message["content"]
+                    user_message = message["content"]             
                 elif message["role"] == "assistant":
-                    assistant_message = message["content"]
+                    if "content" in message:
+                        summary_message = message["content"]
+                    elif "tool_calls" in message:
+                        tool_call_message = message["tool_calls"]
                 elif message["role"] == "tool":
                     tool_messages.append(message)
             
             tools = []
-            for tool in json_file["tools"]: 
+            for tool in json_file["tools"]:
                 tools.append(utils.fix_tools_format(tool))
 
             user_query_vars = {
                 "user_message": user_message,
-                "assistant_message": assistant_message,
+                "assistant_message": tool_call_message,
                 "tool_call_results": tool_messages 
             }
+
             user_query_vars = {**variables, **user_query_vars}
+
             # generate user query given function calls
             user_query = self.run_generation_prompt(user_query_vars, tools, prompt_type="prompt_user_query")
-            print(user_query)
             # run function call completion
             func_call_messages = [
                 {"role": "user", "content": f"{user_query}"}
             ]
             tool_call_response = self.ai_utilities.run_ai_tool_completion(func_call_messages, tools, tool_choice="auto")
-            print(tool_call_response)
             tool_call_message = {key: value for key,  value in tool_call_response.model_dump().items() if value is not None}
             func_call_messages.append(tool_call_message)
 
-            func_result_vars = variables.update({
+            func_result_vars = {
                 "user_message": user_query,
                 "assistant_message": tool_call_response.tool_calls,
+                "results_summary": summary_message,
                 "tool_call_results": tool_messages 
-            })
+            }
+            func_result_vars = {**variables, **func_result_vars}
 
             # generate function results
             function_results = self.run_generation_prompt(func_result_vars, tools, prompt_type="prompt_func_results", json_object=True)
             function_results = json.loads(function_results)
-            print(function_results)
+            
             for tool in function_results['tools']:
                 tool['content'] = json.dumps(tool['content'])
                 func_call_messages.append(tool)
-
-            summary_response = self.ai_utilities.run_ai_tool_completion(func_call_messages, tools, tool_choice="none")
-            print(summary_response)
-            func_call_messages.append(json.loads(summary_response.model_dump_json()))
+            try:
+                summary_response = self.ai_utilities.run_ai_tool_completion(func_call_messages, tools, tool_choice="none")
+                func_call_messages.append(json.loads(summary_response.model_dump_json()))
+            except Exception as e:
+                logger.info(f"summary response could not be generated: {e}")
             logger.info(f"Here's the generated json output:\n{func_call_messages}")
             # Extract and save results for each task
             logger.info(f"saving json files for {task_desc}")
             conversations = {"messages":func_call_messages, "tools":tools}
             self.save_and_index_results(corrected_file_path, conversations, task_desc)
-
             return conversations
         else:
             return f"Data already generated for the {task_desc}"
@@ -255,7 +280,11 @@ class DataGenPipeline:
             reader = csv.DictReader(csv_file)
             tasks = [(row['Category'], row['SubCategory'], row['Task']) for row in islice(reader, num_tasks)]
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        # initialize vector db
+        if not self.vector_db:
+            self.initialize_vector_db()
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
             future_to_task = {executor.submit(self.run_data_generation, task, utils.generate_query(*task), ai_vendor, num_results): task for task in tasks}
 
             for future in concurrent.futures.as_completed(future_to_task):
@@ -278,6 +307,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
   # Example usage for running analysis for companies in a CSV file
-    config_path = "/Users/air/Documents/agi_projects/function_calling/config.yaml"
+    config_path = "./config.yaml"
     datagen = DataGenPipeline(config_path)
     datagen.run_generation_pipeline(ai_vendor=args.ai_vendor, num_results=args.num_results, num_tasks=args.num_tasks)
