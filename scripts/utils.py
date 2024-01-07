@@ -44,11 +44,14 @@ def combine_search_result_documents(search_results, char_limit):
             logger.info(f"Document from {url} added to the combined text")
     return combined_text
 
-def combine_examples(docs):
+def combine_examples(docs, type=None):
     examples = ""
     for doc in docs:
         examples += f"<example = {os.path.basename(doc.metadata['source'])}>\n"
-        examples += f"{doc.page_content}"
+        if type == "reversegen":
+            examples += f"{json.loads(doc.page_content)['messages']}"
+        else:
+            examples += f"{doc.page_content}"
         examples += f"\n</example>\n"
     return examples
 
@@ -121,3 +124,48 @@ def convert_tables_to_markdown(tables):
                 markdown += f" {cell[1]} |"
             markdown += "\n"
     return markdown
+
+def convert_enum_to_list(prop_data):
+    if "enum" in prop_data:
+        enum_value = prop_data["enum"]
+        if isinstance(enum_value, dict):
+            prop_data["enum"] = list(enum_value.keys())
+        elif not isinstance(enum_value, list):
+            prop_data["enum"] = [enum_value]  # Convert to a list
+            
+def fix_tools_format(tool):
+
+    if "type" not in tool or tool["type"] != "function":
+        parameters = tool.get("parameters", {})
+        properties = parameters.get("properties", {})
+        required = parameters.get("required", [])
+
+        for prop_name, prop_data in properties.items():
+            convert_enum_to_list(prop_data)
+
+        return {
+            "type": "function",
+            "function": {
+                "name": tool.get("name", ""),
+                "description": tool.get("description", ""),
+                "parameters": {
+                    "type": "object",
+                    "properties": properties,
+                    "required": required,
+                },
+            },
+        }
+    else:
+        parameters = tool.get("function", {}).get("parameters", {})
+        properties = parameters.get("properties", {})
+        for prop_name, prop_data in properties.items():
+            convert_enum_to_list(prop_data)
+
+        return tool
+
+
+
+
+
+
+
