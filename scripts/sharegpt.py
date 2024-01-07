@@ -42,37 +42,54 @@ class ShareGPTDatasetUploader:
 
     def convert_to_sharegpt(self, conversation):
         converted_conversation = []
+        tool_results = None
+        summary_message = None
 
-        # Add system message
+        # prepare system message with function signatures
         system_message = {
             "from": "system",
-            #"value": json.dumps(conversation["tools"])
-            "value": f'<tools>{json.dumps(conversation["tools"])}</tools>'
+            "value": f'```tools\n{conversation["tools"]}\n```'
         }
         converted_conversation.append(system_message)
 
-        # Process user and assistant messages
+        tool_results = '```tool_response\n'
         for message in conversation["messages"]:
             role = message["role"]
             content = message.get("content", "")
 
             if role == "user":
-                converted_message = {"from": "human", "value": content}
+                user_message = {"from": "human", "value": content}
+                converted_conversation.append(user_message)
             elif role == "assistant":
                 if "tool_calls" in message and message["tool_calls"] is not None:
-                    function_call = message["tool_calls"]
-                    converted_message = {"from": "gpt", "value": json.dumps(function_call)}
+                    tool_calls = message["tool_calls"]
+                    # concatenate multiple tool calls
+                    gpt_value = ""
+                    for tool_call in tool_calls:
+                        gpt_value += f"```tool_call\n{tool_call['function']}\n```\n"
+                    tool_call_message = {"from": "gpt", "value": gpt_value}
+                    converted_conversation.append(tool_call_message)
                 else:
-                    converted_message = {"from": "gpt", "value": content}
+                    summary_message = {"from": "gpt", "value": content}
             elif role == "tool":
-                # Concatenate "name" and "content" for the role "function" 
                 function_name = message["name"]
                 tool_call_id = message["tool_call_id"]
-                function_content = json.dumps(message["content"])
-                combined_value = f'{{"tool_call_id": "{tool_call_id}, "name": "{function_name}", "content": {function_content}}}'
-                converted_message = {"from": "tool", "value": combined_value}
+                function_content = message["content"]
+                combined_value = f'{{"name": "{function_name}", "content": {function_content}}}'
+                
+                # concatenate multiple tool call results 
+                tool_results += f'{combined_value}\n'
 
-            converted_conversation.append(converted_message)
+        # Check if tool_message is present and append it
+        if tool_results:
+            tool_results += '```'
+            tool_message = {"from": "tool", "value": tool_results}
+            converted_conversation.append(tool_message)
+
+        # Check if summary_message is present and append it
+        if summary_message:
+            converted_conversation.append(summary_message)
+            
         return converted_conversation
 
     def format_and_upload_to_hub(self, upload=False):
@@ -85,20 +102,17 @@ class ShareGPTDatasetUploader:
         if upload:
             dataset.push_to_hub(
                 self.hub_dataset_path,
-                #use_auth_token='your-write-token',
-                commit_message="Upload ShareGPT-formatted dataset"
+                #commit_message="Upload ShareGPT-formatted dataset"
             )
-
 if __name__ == "__main__":
-    # Replace these values with your actual paths and Hugging Face credentials
      # Load configuration from YAML file
     config_path = "./config.yaml"
     config = utils.load_yaml(config_path)
 
-    # Load documents from a folder
-    results_path = config["paths"]["results_path"]
+    # get paths from config file
+    results_path = config["paths"]["results_corrected"]
     dataset_path = config["paths"]["dataset_path"]
     hf_dataset_path = config["paths"]["hf_dataset_path"]
 
     uploader = ShareGPTDatasetUploader(results_path, dataset_path, hf_dataset_path)
-    uploader.format_and_upload_to_hub(upload=False)
+    uploader.format_and_upload_to_hub(upload=True)
