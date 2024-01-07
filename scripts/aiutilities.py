@@ -182,3 +182,18 @@ class AIUtilities:
             return response["choices"][0]["message"]["content"]
         except Exception as e:
             return str(e)
+def main():
+    load_dotenv()  # Load environment variables from .env file
+
+    ai_utilities = AIUtilities()
+
+    # Example usage
+    prompt = "Tell me a programmer joke"
+    ai_vendor = "openai"  # Change this to the desired AI vendor
+
+    # Run AI completion
+    result = ai_utilities.run_ai_completion(prompt, ai_vendor)
+    print(f"AI Completion Result:\n{result}")
+
+if __name__ == "__main__":
+    main()
