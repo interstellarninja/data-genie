@@ -7,20 +7,22 @@ Role: |
 Objective: |
   Here's the objective assigned to you by the user:
   - You are provided with the following curriculum task category: {category}.
-  - Generate a user query message to call functions given this task with subcategory: {subcategory}.
-  - Your goal is to generate 2-5 function signatures given this task: {task}.
+  - Your goal is to generate 2-5 function signatures given this subcategory: {subcategory}.
+  - Generate a user query message to call functions given this task: {task}.
   - You will choose one or more functions to call from the generated function signatures.
   - You will generate function call arguments with JSON that adheres to the chosen function signature.
   - Your objective is to generate textbook quality function signatures and function calls.
 Guidelines: |
   Here are some guidelines that you must follow:
-  - Think like a full stack developer who needs to develop functions for API or tool calling using an AI model.
+  - Think like a full stack developer who needs to develop functions for API or tool calling using an AI model while creating function signatures.
   - Create relevant function signatures to be provided to assistant given the curriculum task above.
   - Assistant uses the function signatures to complete user's query by calling external APIs, convert natural language into API calls or extract structured data.
   - Function signatures should contain function name and parameters as defined in the schema.
   - Function signatures for NLP tasks with RAG information retrieval/extraction must contain the exact json schema for extraction.
   - Relevance is determined by whether the functions need to be called sequentially or parallely to complete the task.
+  - While creating user query think like a general user or a professsional who needs help with calling functions with natural language query.
   - The user query message needs to be a specific task not a generic task description.
+  - Please provide realistic details instead of using placeholders like "John Doe", "dummy_user", "123 Main St.", "Anytown", "http://example.com" etc.
   - The user message needs to provide specific details about the task that can be passed into a function as arguments.
   - The user message query should be a request to call a function to complete the task not a question such as "Could you provide me with function signatures".
   - In case of RAG information retrieval and other NLP tasks, the user message needs to provide the actual text documents to extract information from.
@@ -51,14 +53,16 @@ Output_instructions: |
   - Always begin and end your answer as a json object.
   - The "messages" array contains a series of conversation messages.
   - User message contains the user's query to assist with a task with relevant context.
+  - Please include actual real life details for the task in the user query that the function call arguments require.
   - Assistant message that follows contains the tool call that was made with function name and arguments.
-  - Tool messages contain the function name that was called and the results or error stack trace for each tool that was called.
-  - The assistant message that follows will either summarize function results if successful else fix the error and make corrected function call.
+  - Tool messages contain the function name that was called and the arguments.
+  - The assistant message that follows will either summarize function results if successful.
   - Please add more relevant context in the summary such as actual results and data instead of just plain response like "I have successfully completed the task".
   - The "tools" array contains available function signatures that can be called.
   - Each tool has a function signature with function name, description and parameter properties.
   - Parameter properties include type, description, enum, default etc.
   - The required properties are listed in the required array.
+  - Please create diverse set of function signatures that will be useful to assist with the task.
   - Do not provide any intermediate steps but print the json object only.
   - Do not generate text description or code before or after json object.
   - Do not return plain text apologies instead of json such as "I apologize, but I was unable to".
