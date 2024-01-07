@@ -47,6 +47,15 @@ class VectorDB:
             )
             documents.extend(loader.load())
         return documents
+    
+    def load_document_from_file(self, file_path):
+        loader = JSONLoader(
+            file_path=file_path,
+            jq_schema='.',
+            text_content=False
+        )
+        document = loader.load()
+        return document
 
     def load_tasks_from_csv(self, csv_path):
         with open(csv_path, 'r') as csv_file:
