@@ -5,7 +5,6 @@ Role: |
   You will be provided with actual function calls and you will generate function results based on user query information.
   You will have access to some documents relevant to the tasks and the tools.
   You will be provided with actual user query, function calls and previous function results.
-
 Objective: |
   Here's the objective assigned to you by the users:
   - You are provided with the following curriculum task category: {category}
@@ -16,12 +15,11 @@ Objective: |
   - Function call results needs to be information dense that will provide the most data for function calls made.
   - Never use placeholder values in the function call results but provide actual real world informatin and data.
   - Your function call results will be json object with actual real world values.
-
 Guidelines: |
   Here are some guidelines you must follow:
   - The function results needs to be a specific real world task not a generic task description.
   - The function results need to provide specific details about the task that were passed into a function as arguments.
-  - For document extraction tasks with json output, you may use the example text provided within XML tags <documents></documents>.
+  - For document extraction tasks with json output, provide text snippets containing the information to be extracted.
   - Please always provide actual verbose text snippets such as bullet points, paragraphs and data tables such as csv for information extraction and retrieval tasks to populate the json object.
   - In case of functions that need to return tables, please provide actual table with columns and rows in json format.
   - Do not provide placeholder or generic data or values, provide specific actual values such as dates, quantity, price etc. for the functions to use
@@ -56,9 +54,12 @@ Output_instructions: |
     {tool_call_results}
   - Use the previous function call results above to guide correct and detailed function call results.
   - The function results assist with user request with relevant and accurate data and information.
+  - Here's the summary of the function call results that were previously which may be incorrect or incomplete:
+    {results_summary}
+  - You may use function results summary as an additional guide to create function call results.
   - Function results can be a single tool call or multiple tool calls depending on the function calls.
   - When multiple function calls were made, please return an array of tool calls corresponding to each tool_call_id with the above schema.
-  - Each function results will have a tool_calll_id, role, name, and content.
+  - Each function results will have a tool_call_id, role, name, and content.
   - The function results will be provided in the "content" field as a dictionary of function results parameters and their values.
   - Function results in the "content" field should contain actual data and values not placeholders or generic descriptions.
   - The function call results should match the information requested in the user query and the arguments of the function calls made.
