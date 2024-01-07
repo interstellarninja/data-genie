@@ -52,6 +52,7 @@ class DataGenPipeline:
         self.web_search_client = WebSearch()
         self.vector_db = None
         self.file_write_lock = threading.Lock()
+        self.vector_db_lock = threading.Lock()
 
     def retrieve_and_combine_documents(self, query, num_results, folder_path, char_limit):
         # Check if the folder already exists
@@ -85,27 +86,44 @@ class DataGenPipeline:
         except Exception as e:
             return f"Exception in the loop: {e}"
     
-    def retrieve_and_combine_examples(self, query, results_path, num_examples=2):
-        # Create an instance of the VectorDB class
-
-        if not self.vector_db:
-            self.vector_db = VectorDB()
+    def initialize_vector_db(self):
             schema_path = self.config["paths"]["redis_schema"]
-            try:     
+            examples_path = self.config["paths"]["examples_path"]
+            results_path = self.config["paths"]["results_corrected"]
+            self.vector_db = VectorDB()
+            try:
                 self.vector_db.load_vector_store(schema_path)
-            except Exception as e:
-                logger.info(f"Couldn't load existing index: {e}")
-                examples_path = self.config["paths"]["examples_path"]
-                self.vector_db.initialize_vector_store(examples_path, schema_path)
-                if os.listdir(results_path):
-                    documents = self.vector_db.load_documents_from_folder(results_path)
-                    self.vector_db.rds.add_documents(documents)
+                print("Existing VectorDB loaded successfully.")
+            except Exception as load_error:
+                print(f"Loading existing VectorDB failed: {load_error}. Initializing...")
+                try:
+                    self.vector_db.initialize_vector_store(examples_path, schema_path)
+                    print("VectorDB initialized successfully.")
+                    try:
+                        if os.path.exists(results_path) and os.listdir(results_path):
+                            documents = []
+                            for root, dirs, files in os.walk(results_path):
+                                for file in files:
+                                    if file.endswith("json"):
+                                        file_path = os.path.join(root, file)
+                                        document = self.vector_db.load_document_from_file(file_path)
+                                        documents.extend(document)
+                            self.vector_db.rds.add_documents(documents)
+                            print("Previous results added to examples index")
+                    except Exception as e:
+                        print(f"Loading previous examples failed: {e}")
+                except Exception as init_error:
+                    print("Initialization failed:", init_error)
+                    logger.error(f"VectorDB initialization failed: {init_error}")
 
-        retrieved_docs = self.vector_db.perform_similarity_search(query, num_examples)
-        combined_examples = utils.combine_examples(retrieved_docs)
-
+    def retrieve_and_combine_examples(self, query, num_examples=2):
+        try:
+            retrieved_docs = self.vector_db.perform_similarity_search(query, num_examples)
+            combined_examples = utils.combine_examples(retrieved_docs, type=None)
+        except Exception as e:
+            print(f"Error combining examples: {e}")
+            combined_examples = ""
         return combined_examples
-
 
     def extract_and_save_results(self, file_path, completion, task_desc):
         try:
@@ -154,8 +172,7 @@ class DataGenPipeline:
          # Create a folder for each task if it doesn't exist
         task_desc = f"{task[0]}_{task[1]}_{task[2]}"
         task_desc = task_desc.replace(' ', '_')
-        results_path = self.config["paths"]["results_path"]
-        results_path = f"{results_path}/{ai_vendor}_{today_date}"
+        results_path = f"results/{ai_vendor}_{today_date}"
         results_path = os.path.join(os.getcwd(), results_path, task[0], task[1])
         results_path = results_path.replace(' ', '_')
         os.makedirs(results_path, exist_ok=True)
@@ -165,23 +182,24 @@ class DataGenPipeline:
         # Check if the file already exists
         if not os.path.exists(file_path):
             ctx_len = self.ai_utilities.get_ai_context_length(ai_vendor)
-            char_limit = (int(ctx_len) - 8000) * 4
+            char_limit = (int(ctx_len) - 8000) * 2
             logger.info(f"The character limit for documents is:{char_limit}")
+
             combined_documents = self.retrieve_and_combine_documents(query, num_results, folder_path, char_limit)
-            combined_examples = self.retrieve_and_combine_examples(query, results_path, num_examples=3)
+            combined_examples = self.retrieve_and_combine_examples(query, num_examples=2)
 
             # Set variables for prompt YAML
             variables = {
                 "category": task[0],
                 "subcategory": task[1],
-                "task": task[2],
+                "task": task[2], 
                 "doc_list": combined_documents,
                 "examples": combined_examples,
                 "pydantic_schema": OutputSchema.schema_json(),
             }
-
             prompt_manager = PromptManager(self.config)
-            prompt = prompt_manager.generate_prompt(variables)
+            prompt_yaml_path = self.config["paths"]["prompt_yaml"]
+            prompt = prompt_manager.generate_prompt(variables, prompt_yaml_path)
             logger.info(f"Logging prompt text\n{prompt}")
             
             completion = self.ai_utilities.run_ai_completion(prompt, ai_vendor)
@@ -199,8 +217,12 @@ class DataGenPipeline:
         with open(curriculum_csv_path, 'r') as csv_file:
             reader = csv.DictReader(csv_file)
             tasks = [(row['Category'], row['SubCategory'], row['Task']) for row in islice(reader, num_tasks)]
+        
+        # initialize vector db
+        if not self.vector_db:
+            self.initialize_vector_db()
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
             future_to_task = {executor.submit(self.run_data_generation, task, utils.generate_query(*task), ai_vendor, num_results): task for task in tasks}
 
             for future in concurrent.futures.as_completed(future_to_task):
