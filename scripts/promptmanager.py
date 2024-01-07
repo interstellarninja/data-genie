@@ -44,12 +44,9 @@ class PromptManager:
         )
         return prompt_schema
     
-    def generate_prompt(self, variables):
-        prompt_yaml_path = self.config["paths"]["prompt_yaml"]
+    def generate_prompt(self, variables, prompt_yaml_path):
         prompt_schema = self.read_yaml_file(prompt_yaml_path)
-        print(prompt_schema)
         prompt = self.format_yaml_prompt(prompt_schema, variables)
-
         return prompt
 
 # Example usage:
