@@ -11,7 +11,7 @@
           {
             "id": "call_ur6F46uLbvxHgpOuoSMqURF9",
             "function": {
-              "arguments": {"location": "San Francisco, CA", "unit": "fahrenheit"},
+              "arguments": "{\"location\": \"San Francisco, CA\", \"unit\": \"fahrenheit\"}",
               "name": "get_current_weather",
               "type": "function"
             }
@@ -19,7 +19,7 @@
           {
             "id": "call_PHxjfJx29UbQXSQS5G3ZXoLz",
             "function": {
-              "arguments": {"location": "San Francisco, CA", "format": "fahrenheit", "num_days": 5},
+              "arguments": "{\"location\": \"San Francisco, CA\", \"format\": \"fahrenheit\", \"num_days\": 5}",
               "name": "get_n_day_weather_forecast",
               "type": "function"
             }
