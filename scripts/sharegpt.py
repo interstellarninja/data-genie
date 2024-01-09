@@ -1,8 +1,11 @@
+import argparse
 from datasets import Dataset
 import utils
 import uuid
 import json
 import os
+from validator import FunctionSignature
+from validator import validate_function_calls
 
 class ShareGPTDatasetUploader:
     def __init__(self, folder_path, output_path, hub_dataset_path):
@@ -10,7 +13,7 @@ class ShareGPTDatasetUploader:
         self.output_path = output_path
         self.hub_dataset_path = hub_dataset_path
 
-    def prepare_sharegpt_dataset(self):
+    def prepare_sharegpt_dataset(self, turn):
         output_data = []
 
         for root, dirs, files in os.walk(self.folder_path):
@@ -36,14 +39,34 @@ class ShareGPTDatasetUploader:
                     print(f"File Path: {file_path}")
                     with open(file_path) as file:
                         json_data = json.load(file)
-                    converted_conversation = self.convert_to_sharegpt(json_data)
-                    output_data.append({"id": unique_id, "conversations": converted_conversation, "category": category, "subcategory": subcategory, "task": task})
+                    
+                    converted_conversation = self.convert_to_sharegpt(json_data, turn)
+                    if converted_conversation:
+                        output_data.append({"id": unique_id, "conversations": converted_conversation, "category": category, "subcategory": subcategory, "task": task})
         return output_data
 
-    def convert_to_sharegpt(self, conversation):
+    def convert_to_sharegpt(self, conversation, turn="multi"):
         converted_conversation = []
         tool_results = None
+        tool_call_message = None
         summary_message = None
+        failed_flag = False
+
+        function_signature_dicts = conversation["tools"]
+
+        function_signatures = []
+
+        for signature_dict in function_signature_dicts:
+            try:
+                # Check if the required fields are present in the signature_dict
+                if "function" in signature_dict and "name" in signature_dict["function"]:
+                    function_signature = FunctionSignature(**signature_dict)
+                    function_signatures.append(function_signature)
+                else:
+                    print(f"Missing required fields in function signature: {signature_dict}")
+            except Exception as e:
+                # Handle validation errors
+                print(f"Validation error for function signature: {e}")
 
         # prepare system message with function signatures
         system_message = {
@@ -59,18 +82,23 @@ class ShareGPTDatasetUploader:
 
             if role == "user":
                 user_message = {"from": "human", "value": content}
-                converted_conversation.append(user_message)
+                
+            
             elif role == "assistant":
                 if "tool_calls" in message and message["tool_calls"] is not None:
                     tool_calls = message["tool_calls"]
+                    results, failed_flag = validate_function_calls(tool_calls, function_signatures)
                     # concatenate multiple tool calls
-                    gpt_value = ""
-                    for tool_call in tool_calls:
-                        gpt_value += f"```tool_call\n{tool_call['function']}\n```\n"
-                    tool_call_message = {"from": "gpt", "value": gpt_value}
-                    converted_conversation.append(tool_call_message)
+                    if not failed_flag:
+                        gpt_value = ""
+                        for tool_call in tool_calls:
+                            gpt_value += f"```tool_call\n{tool_call['function']}\n```\n"
+                        tool_call_message = {"from": "gpt", "value": gpt_value}
+                    else:
+                        print(results)                  
                 else:
                     summary_message = {"from": "gpt", "value": content}
+            
             elif role == "tool":
                 function_name = message["name"]
                 tool_call_id = message["tool_call_id"]
@@ -79,21 +107,30 @@ class ShareGPTDatasetUploader:
                 
                 # concatenate multiple tool call results 
                 tool_results += f'{combined_value}\n'
+        
+        if not failed_flag:
+            converted_conversation.append(user_message)
+            if tool_call_message:
+                converted_conversation.append(tool_call_message)
+            # Check if tool_message is present and append it
+            if turn=="multi":
+                if tool_results:
+                    tool_results += '```'
+                    tool_message = {"from": "tool", "value": tool_results}
+                    converted_conversation.append(tool_message)
 
-        # Check if tool_message is present and append it
-        if tool_results:
-            tool_results += '```'
-            tool_message = {"from": "tool", "value": tool_results}
-            converted_conversation.append(tool_message)
+                # Check if summary_message is present and append it
+                if summary_message:
+                    converted_conversation.append(summary_message)
+                return converted_conversation
+            elif turn=="single":
+                if not tool_call_message:
+                    converted_conversation.append(summary_message)
+                return converted_conversation    
+        return None
 
-        # Check if summary_message is present and append it
-        if summary_message:
-            converted_conversation.append(summary_message)
-            
-        return converted_conversation
-
-    def format_and_upload_to_hub(self, upload=False):
-        sharegpt_format_data = self.prepare_sharegpt_dataset()
+    def format_and_upload_to_hub(self, turn, upload=False):
+        sharegpt_format_data = self.prepare_sharegpt_dataset(turn)
         dataset = Dataset.from_list(sharegpt_format_data)
 
         with open(self.output_path, 'w') as file:
@@ -105,14 +142,19 @@ class ShareGPTDatasetUploader:
                 #commit_message="Upload ShareGPT-formatted dataset"
             )
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Prepare and Uplaod ShareGPT dataset")
+    parser.add_argument("--turn", type=str, default="multi", help="type of turn")
+
+    args = parser.parse_args()
+
      # Load configuration from YAML file
     config_path = "./config.yaml"
     config = utils.load_yaml(config_path)
 
     # get paths from config file
     results_path = config["paths"]["results_corrected"]
-    dataset_path = config["paths"]["dataset_path"]
-    hf_dataset_path = config["paths"]["hf_dataset_path"]
+    dataset_path = config["paths"]["json_path"]
+    hf_dataset_path = config["paths"]["hf_singleturn_path"]
 
     uploader = ShareGPTDatasetUploader(results_path, dataset_path, hf_dataset_path)
-    uploader.format_and_upload_to_hub(upload=True)
+    uploader.format_and_upload_to_hub(turn=args.turn, upload=True)
