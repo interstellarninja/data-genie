@@ -1,4 +1,5 @@
 import argparse
+import ast
 from datasets import Dataset
 import utils
 import uuid
@@ -69,9 +70,11 @@ class ShareGPTDatasetUploader:
                 print(f"Validation error for function signature: {e}")
 
         # prepare system message with function signatures
+        sys_prompt = "You are a function calling AI model. You are provided with function signatures within ```tools<tool list>``` code block below. You may call one or more functions to assist with user query. Don't make assumptions about what values to plug into functions. Return a json object with function name and arguments with the following schema: [{'arguments': <args dict>, 'name': <function name>}]"
+
         system_message = {
             "from": "system",
-            "value": f'```tools\n{conversation["tools"]}\n```'
+            "value": f'{sys_prompt}\n```tools\n{conversation["tools"]}\n```'
         }
         converted_conversation.append(system_message)
 
@@ -144,8 +147,12 @@ class ShareGPTDatasetUploader:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Prepare and Uplaod ShareGPT dataset")
     parser.add_argument("--turn", type=str, default="multi", help="type of turn")
+    parser.add_argument("--upload", type=str, default="True", help="whether to upload to hub or just save locally")
 
     args = parser.parse_args()
+
+    # Convert upload argument to boolean
+    upload = ast.literal_eval(args.upload)
 
      # Load configuration from YAML file
     config_path = "./config.yaml"
@@ -157,4 +164,4 @@ if __name__ == "__main__":
     hf_dataset_path = config["paths"]["hf_singleturn_path"]
 
     uploader = ShareGPTDatasetUploader(results_path, dataset_path, hf_dataset_path)
-    uploader.format_and_upload_to_hub(turn=args.turn, upload=True)
+    uploader.format_and_upload_to_hub(turn=args.turn, upload=upload)
