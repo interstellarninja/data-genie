@@ -157,8 +157,8 @@ dataset_name = "NousResearch/func-calling-dpo"
 
 dpo_pipeline = DPOTrainerPipeline(model_name, new_model, dataset_name)
 dpo_pipeline.train_model()
-#dpo_pipeline.save_artifacts()
-#dpo_pipeline.cleanup_memory()
-#dpo_pipeline.reload_model_fp16()
-#dpo_pipeline.save_model_tokenizer()
-#dpo_pipeline.push_to_hub()
+dpo_pipeline.save_artifacts()
+dpo_pipeline.cleanup_memory()
+dpo_pipeline.reload_model_fp16()
+dpo_pipeline.save_model_tokenizer()
+dpo_pipeline.push_to_hub()
