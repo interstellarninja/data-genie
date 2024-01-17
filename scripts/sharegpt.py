@@ -70,15 +70,16 @@ class ShareGPTDatasetUploader:
                 print(f"Validation error for function signature: {e}")
 
         # prepare system message with function signatures
-        sys_prompt = "You are a function calling AI model. You are provided with function signatures within ```tools<tool list>``` code block below. You may call one or more functions to assist with user query. Don't make assumptions about what values to plug into functions. Return a json object with function name and arguments with the following schema: [{'arguments': <args dict>, 'name': <function name>}]"
-
+        sys_prompt = "You are a function calling AI model. You are provided with function signatures after the <tools> tag. You may call one or more functions to assist with the user query. Don't make assumptions about what values to plug into functions."
+        sys_prompt += f'\n<tools>\n{conversation["tools"]}\n'
+        sys_prompt += "For each function call return a json object with function name and arguments follwed by a <tool_call> tag with the following schema:\n<tool_call>\n{'arguments': <args dict>, 'name': <function name>}\n"
         system_message = {
             "from": "system",
-            "value": f'{sys_prompt}\n```tools\n{conversation["tools"]}\n```'
+            "value": sys_prompt
         }
         converted_conversation.append(system_message)
 
-        tool_results = '```tool_response\n'
+        tool_results = ""
         for message in conversation["messages"]:
             role = message["role"]
             content = message.get("content", "")
@@ -95,7 +96,7 @@ class ShareGPTDatasetUploader:
                     if not failed_flag:
                         gpt_value = ""
                         for tool_call in tool_calls:
-                            gpt_value += f"```tool_call\n{tool_call['function']}\n```\n"
+                            gpt_value += f"<tool_call>\n{tool_call['function']}\n"
                         tool_call_message = {"from": "gpt", "value": gpt_value}
                     else:
                         print(results)                  
@@ -109,7 +110,7 @@ class ShareGPTDatasetUploader:
                 combined_value = f'{{"name": "{function_name}", "content": {function_content}}}'
                 
                 # concatenate multiple tool call results 
-                tool_results += f'{combined_value}\n'
+                tool_results += f"<tool_response>\n{combined_value}\n"
         
         if not failed_flag:
             converted_conversation.append(user_message)
@@ -118,7 +119,6 @@ class ShareGPTDatasetUploader:
             # Check if tool_message is present and append it
             if turn=="multi":
                 if tool_results:
-                    tool_results += '```'
                     tool_message = {"from": "tool", "value": tool_results}
                     converted_conversation.append(tool_message)
 
@@ -161,7 +161,7 @@ if __name__ == "__main__":
     # get paths from config file
     results_path = config["paths"]["results_corrected"]
     dataset_path = config["paths"]["json_path"]
-    hf_dataset_path = config["paths"]["hf_singleturn_path"]
+    hf_dataset_path = config["paths"]["hf_dataset_path"]
 
     uploader = ShareGPTDatasetUploader(results_path, dataset_path, hf_dataset_path)
     uploader.format_and_upload_to_hub(turn=args.turn, upload=upload)
