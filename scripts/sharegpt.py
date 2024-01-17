@@ -70,9 +70,9 @@ class ShareGPTDatasetUploader:
                 print(f"Validation error for function signature: {e}")
 
         # prepare system message with function signatures
-        sys_prompt = "You are a function calling AI model. You are provided with function signatures after the <tools> tag. You may call one or more functions to assist with the user query. Don't make assumptions about what values to plug into functions."
-        sys_prompt += f'\n<tools>\n{conversation["tools"]}\n'
-        sys_prompt += "For each function call return a json object with function name and arguments follwed by a <tool_call> tag with the following schema:\n<tool_call>\n{'arguments': <args dict>, 'name': <function name>}\n"
+        sys_prompt = "You are a function calling AI model. You are provided with function signatures within <tools></tools> XML tags. You may call one or more functions to assist with the user query. Don't make assumptions about what values to plug into functions."
+        sys_prompt += f'\n<tools>\n{conversation["tools"]}\n</tools>\n'
+        sys_prompt += "For each function call return a json object with function name and arguments within <tool_call></tool_call> tags with the following schema:\n<tool_call>\n{'arguments': <args dict>, 'name': <function name>}\n</tool_call>\n"
         system_message = {
             "from": "system",
             "value": sys_prompt
@@ -96,7 +96,7 @@ class ShareGPTDatasetUploader:
                     if not failed_flag:
                         gpt_value = ""
                         for tool_call in tool_calls:
-                            gpt_value += f"<tool_call>\n{tool_call['function']}\n"
+                            gpt_value += f"<tool_call>\n{tool_call['function']}\n</tool_call>\n"
                         tool_call_message = {"from": "gpt", "value": gpt_value}
                     else:
                         print(results)                  
@@ -110,7 +110,7 @@ class ShareGPTDatasetUploader:
                 combined_value = f'{{"name": "{function_name}", "content": {function_content}}}'
                 
                 # concatenate multiple tool call results 
-                tool_results += f"<tool_response>\n{combined_value}\n"
+                tool_results += f"<tool_response>\n{combined_value}\n</tool_response>\n"
         
         if not failed_flag:
             converted_conversation.append(user_message)
