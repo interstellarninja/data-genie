@@ -79,9 +79,13 @@ class ModelEvaluator:
                 return "failed"
         return "passed"
 
-    def evaluate_dataset(self, eval_dataset):
+    def evaluate_dataset(self, eval_dataset, example=False):
 
         for sample in eval_dataset:
+            example_prompt = "###Example\nAn example usage of functions is as follows\n```\nSYSTEM: You are a helpful assistant who has access to functions. Use them if required\n<tools>[\n {\n \"name\": \"calculate_distance\",\n \"description\": \"Calculate the distance between two locations\",\n \"parameters\": {\n \"type\": \"object\",\n \"properties\": {\n \"origin\": {\n \"type\": \"string\",\n \"description\": \"The starting location\"\n },\n \"destination\": {\n \"type\": \"string\",\n \"description\": \"The destination location\"\n },\n \"mode\": {\n \"type\": \"string\",\n \"description\": \"The mode of transportation\"\n }\n },\n \"required\": [\n \"origin\",\n \"destination\",\n \"mode\"\n ]\n }\n },\n {\n \"name\": \"generate_password\",\n \"description\": \"Generate a random password\",\n \"parameters\": {\n \"type\": \"object\",\n \"properties\": {\n \"length\": {\n \"type\": \"integer\",\n \"description\": \"The length of the password\"\n }\n },\n \"required\": [\n \"length\"\n ]\n }\n }\n]\n\n</tools>\nUSER: Hi, I need to know the distance from New York to Los Angeles by car.\nASSISTANT:\n<tool_call>\n{\"arguments\": {\"origin\": \"New York\",\n \"destination\": \"Los Angeles\", \"mode\": \"car\"}, \"name\": \"calculate_distance\"}\n</tool_call>\n```\n"
+            if example:
+                sample['prompt'][0]['content'] += example_prompt
+                print(sample['prompt'][0])
             #prompt = [
             #    {'role': 'system', 'content': sample["system"]},
             #    {'role': 'user', 'content': sample["user"]}
@@ -136,6 +140,7 @@ class ModelEvaluator:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate model performance on fireworks-ai dataset")
     parser.add_argument("model_path", type=str, help="Path to the model folder")
+    parser.add_argument("--example", type=str, default="False", help="Option to include one-shot example in sys prompt")
     args = parser.parse_args()
     
     # Load evaluation dataset
@@ -145,7 +150,7 @@ if __name__ == "__main__":
     model_evaluator = ModelEvaluator(args.model_path)
 
     # Evaluate the dataset
-    model_evaluator.evaluate_dataset(eval_dataset)
+    model_evaluator.evaluate_dataset(eval_dataset, args.example)
     results_path = '/home/interstellarninja/ai_projects/axolotl/examples/stablelm/eval_results.json'
     with open(results_path, 'w') as file:
         json.dump(model_evaluator.eval_results, file)
