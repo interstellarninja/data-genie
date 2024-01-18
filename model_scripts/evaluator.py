@@ -1,12 +1,16 @@
+import argparse
+import logging
 import torch
 import json
 import re
+import ast
+import xml.etree.ElementTree as ET
 from datasets import load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
-import yaml
 
 class ModelEvaluator:
     def __init__(self, model_path):
+        logging.getLogger("transformers.tokenization_utils_base").setLevel(logging.ERROR)
         self.model = AutoModelForCausalLM.from_pretrained(
             model_path,
             trust_remote_code=True,
@@ -19,58 +23,60 @@ class ModelEvaluator:
         self.tokenizer.padding_side = "left"
         self.eval_results = []
 
-    def validate_and_extract_tool_call(self, completion):
-        pattern = re.compile(r'<\|assistant\|>([\s\S]*)')
+    def validate_and_extract_tool_calls(self, completion):
+        # Define a pattern to find the assistant message
+        assistant_pattern = re.compile(r'<\|assistant\|>((?:(?!<\|assistant\|>|</s>).)*)</s>', re.DOTALL)
+        assistant_match = assistant_pattern.search(completion)
 
-        match = pattern.search(completion)
-
-        if match:
-            content_after_assistant = match.group(1)
-            if content_after_assistant is not None:
-                content = content_after_assistant.strip()
-                # Remove unwanted characters
-                content = re.sub(r'\\1', '', content)
-                content = re.sub(r'\\n', '', content)
-                # Extract code block
-                start = content.find("```tool_call")
-                if start >= 0:
-                    end = content.find("```", start + 1)
-                    code_block = content[start + 12:end]
-                    try:
-                        # Replace single quotes with double quotes
-                        code_block = code_block.replace("'", "\"")
-                        # Load as JSON directly
-                        json_data = json.loads(code_block)
-                        return True, json_data
-                    except Exception as e:
-                        print(f"Here's the extracted block {code_block} with error {e}")
-                        return False, content
-                else:
-                    print("Did not find tool_call")
-                    return False, content
-        else:
-            print("No match found for the pattern.")
-
-    def validate_func_calls(self, generated_values, expected_values):
-        for key, expected_value in expected_values.items():
-            # Handle nested key
-            keys = key.split(".")
-            obj = generated_values
+        validation_result = False
+        extracted_data = []
+        if assistant_match:
+            assistant_content = assistant_match.group(1).strip()
+            print(assistant_content)
 
             try:
-                for key in keys[:-1]:
-                    obj = obj.get(key, {})
-            except AttributeError:
-                print(f"AttributeError: 'NoneType' object has no attribute 'get'")
+                # Wrap the assistant content with a root element
+                xml_content = f"<root>{assistant_content}</root>"
+
+                # Parse the assistant content as XML
+                root = ET.fromstring(xml_content)
+
+                # Iterate over all <tool_call> elements
+                for tool_call_element in root.findall(".//tool_call"):
+                    json_text = tool_call_element.text.strip()
+
+                    try:
+                        # Prioritize json.loads for better error handling
+                        json_data = json.loads(json_text)  # Use json.loads first
+                    except json.JSONDecodeError:
+                        try:
+                            # Fallback to ast.literal_eval if json.loads fails
+                            json_data = ast.literal_eval(json_text)
+                        except SyntaxError as err:
+                            print(f"JSON parsing failed with both json.loads and ast.literal_eval:")
+                            print(f"- JSON Decode Error: {err}")
+                            print(f"- Problematic JSON text: {json_text}")
+                            validation_result = False
+                            continue  # Skip to the next tool_call_element
+
+                    extracted_data.append(json_data)
+                    validation_result = True
+
+                return validation_result, extracted_data
+
+            except ET.ParseError as xml_error:
+                print(f"XML Parse Error: {xml_error}")
+                return validation_result, extracted_data
+
+        else:
+            print("No match found for the assistant pattern.")
+            return validation_result, extracted_data
+        
+    def validate_func_calls(self, generated_arguments, expected_arguments):
+        for key, expected_value in expected_arguments.items():
+            if generated_arguments.get(key) != expected_value:
+                print(f"Function args do not match; expected:{expected_value}, got:{generated_arguments.get(key)}")
                 return "failed"
-
-            value = obj.get(keys[-1])
-
-            # Compare value
-            if value != expected_value:
-                print(f"function call argument values do not match")
-                return "failed"
-
         return "passed"
 
     def evaluate_dataset(self, eval_dataset):
@@ -95,12 +101,23 @@ class ModelEvaluator:
 
             completion = self.tokenizer.decode(tokens[0], skip_special_tokens=False)
 
-            validation, assistant_message = self.validate_and_extract_tool_call(completion)
+            validation, assistant_message = self.validate_and_extract_tool_calls(completion)
             print(assistant_message)
 
             if validation:
-                result = self.validate_func_calls(assistant_message, json.loads(sample['completion']))
-                print(result)
+                function_found = False
+                eval_tool_calls = json.loads(sample['completion'])
+                for tool_call in assistant_message:
+                    if tool_call['name'] == eval_tool_calls['name']:
+                        result = self.validate_func_calls(tool_call['arguments'], eval_tool_calls['arguments'])
+                        print(result)
+                        function_found = True
+                        break
+
+                if not function_found:
+                    print("Function not found")
+                    result = "failed"
+                    print(result)
             else:
                 print("function call validation failed")
                 result = "failed"
@@ -117,14 +134,15 @@ class ModelEvaluator:
         return pass_rate
 
 if __name__ == "__main__":
-    # Set your model path
-    model_path = '/home/interstellarninja/ai_projects/axolotl/examples/stablelm/interstellarninja/stablelm-zephyr-3b-func-calling-dpo'
+    parser = argparse.ArgumentParser(description="Evaluate model performance on fireworks-ai dataset")
+    parser.add_argument("model_path", type=str, help="Path to the model folder")
+    args = parser.parse_args()
     
     # Load evaluation dataset
     eval_dataset = load_dataset("NousResearch/func-calling-eval")['train']
 
     # Create model evaluator instance
-    model_evaluator = ModelEvaluator(model_path)
+    model_evaluator = ModelEvaluator(args.model_path)
 
     # Evaluate the dataset
     model_evaluator.evaluate_dataset(eval_dataset)
