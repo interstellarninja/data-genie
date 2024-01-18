@@ -134,6 +134,12 @@ class ShareGPTDatasetUploader:
 
     def format_and_upload_to_hub(self, turn, upload=False):
         sharegpt_format_data = self.prepare_sharegpt_dataset(turn)
+       
+        if os.path.exists("./extraction_data.json"):
+            with open("./extraction_data.json") as file:
+                extraction_data = json.load(file)
+            sharegpt_format_data += extraction_data
+        
         dataset = Dataset.from_list(sharegpt_format_data)
 
         with open(self.output_path, 'w') as file:
