@@ -19,13 +19,17 @@ class ModelEvaluator:
             device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
-        self.tokenizer.pad_token = self.tokenizer.eos_token
+        #self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.tokenizer.pad_token = "<|endoftext|>"
         self.tokenizer.padding_side = "left"
         self.eval_results = []
 
-    def validate_and_extract_tool_calls(self, completion):
+    def validate_and_extract_tool_calls(self, completion, chat_template):
         # Define a pattern to find the assistant message
-        assistant_pattern = re.compile(r'<\|assistant\|>((?:(?!<\|assistant\|>|</s>).)*)</s>', re.DOTALL)
+        if chat_template == "zephyr":
+            assistant_pattern = re.compile(r'<\|assistant\|>((?:(?!<\|assistant\|>|</s>).)*)</s>', re.DOTALL)
+        elif chat_template == "chatml":
+            assistant_pattern = re.compile(r'<\\|im_start\\|>assistant((?:(?!<\\|im_start\\|>assistant).)*)$', re.DOTALL)
         assistant_match = assistant_pattern.search(completion)
 
         validation_result = False
@@ -79,11 +83,11 @@ class ModelEvaluator:
                 return "failed"
         return "passed"
 
-    def evaluate_dataset(self, eval_dataset, example=False):
+    def evaluate_dataset(self, eval_dataset, chat_template, example="False"):
 
         for sample in eval_dataset:
             example_prompt = "###Example\nAn example usage of functions is as follows\n```\nSYSTEM: You are a helpful assistant who has access to functions. Use them if required\n<tools>[\n {\n \"name\": \"calculate_distance\",\n \"description\": \"Calculate the distance between two locations\",\n \"parameters\": {\n \"type\": \"object\",\n \"properties\": {\n \"origin\": {\n \"type\": \"string\",\n \"description\": \"The starting location\"\n },\n \"destination\": {\n \"type\": \"string\",\n \"description\": \"The destination location\"\n },\n \"mode\": {\n \"type\": \"string\",\n \"description\": \"The mode of transportation\"\n }\n },\n \"required\": [\n \"origin\",\n \"destination\",\n \"mode\"\n ]\n }\n },\n {\n \"name\": \"generate_password\",\n \"description\": \"Generate a random password\",\n \"parameters\": {\n \"type\": \"object\",\n \"properties\": {\n \"length\": {\n \"type\": \"integer\",\n \"description\": \"The length of the password\"\n }\n },\n \"required\": [\n \"length\"\n ]\n }\n }\n]\n\n</tools>\nUSER: Hi, I need to know the distance from New York to Los Angeles by car.\nASSISTANT:\n<tool_call>\n{\"arguments\": {\"origin\": \"New York\",\n \"destination\": \"Los Angeles\", \"mode\": \"car\"}, \"name\": \"calculate_distance\"}\n</tool_call>\n```\n"
-            if example:
+            if example == "True":
                 sample['prompt'][0]['content'] += example_prompt
                 print(sample['prompt'][0])
             #prompt = [
@@ -105,7 +109,7 @@ class ModelEvaluator:
 
             completion = self.tokenizer.decode(tokens[0], skip_special_tokens=False)
 
-            validation, assistant_message = self.validate_and_extract_tool_calls(completion)
+            validation, assistant_message = self.validate_and_extract_tool_calls(completion, chat_template)
             print(assistant_message)
 
             if validation:
@@ -139,7 +143,8 @@ class ModelEvaluator:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate model performance on fireworks-ai dataset")
-    parser.add_argument("model_path", type=str, help="Path to the model folder")
+    parser.add_argument("--model_path", type=str, help="Path to the model folder")
+    parser.add_argument("--chat_template", type=str, default="chatml", help="Chat template for prompt formatting")
     parser.add_argument("--example", type=str, default="False", help="Option to include one-shot example in sys prompt")
     args = parser.parse_args()
     
@@ -150,7 +155,7 @@ if __name__ == "__main__":
     model_evaluator = ModelEvaluator(args.model_path)
 
     # Evaluate the dataset
-    model_evaluator.evaluate_dataset(eval_dataset, args.example)
+    model_evaluator.evaluate_dataset(eval_dataset, args.chat_template, args.example)
     results_path = '/home/interstellarninja/ai_projects/axolotl/examples/stablelm/eval_results.json'
     with open(results_path, 'w') as file:
         json.dump(model_evaluator.eval_results, file)
