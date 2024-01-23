@@ -19,8 +19,7 @@ class ModelEvaluator:
             device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
-        #self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.tokenizer.pad_token = "<|endoftext|>"
+        self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "left"
         self.eval_results = []
 
@@ -38,40 +37,45 @@ class ModelEvaluator:
             assistant_content = assistant_match.group(1).strip()
             print(assistant_content)
 
-            try:
-                # Wrap the assistant content with a root element
-                xml_content = f"<root>{assistant_content}</root>"
+            xml_sections = re.split(r"(?<=</tool_call>)", assistant_content)
+            for xml_section in xml_sections:
+                if "<tool_call>" not in xml_section:
+                    # Skip sections without opening tag
+                    continue
+                elif "</tool_call>" not in xml_section:
+                    xml_section += "</tool_call>"  
+                try:
+                    # Wrap section in root element  
+                    xml_section = f"<root>{xml_section}</root>"
+                    # Parse XML
+                    root = ET.fromstring(xml_section)
 
-                # Parse the assistant content as XML
-                root = ET.fromstring(xml_content)
-
-                # Iterate over all <tool_call> elements
-                for tool_call_element in root.findall(".//tool_call"):
-                    json_text = tool_call_element.text.strip()
-
-                    try:
-                        # Prioritize json.loads for better error handling
-                        json_data = json.loads(json_text)  # Use json.loads first
-                    except json.JSONDecodeError:
+                    # Extract JSON data
+                    for element in root.findall(".//tool_call"):
+                        json_text = element.text.strip()
                         try:
-                            # Fallback to ast.literal_eval if json.loads fails
-                            json_data = ast.literal_eval(json_text)
-                        except SyntaxError as err:
-                            print(f"JSON parsing failed with both json.loads and ast.literal_eval:")
-                            print(f"- JSON Decode Error: {err}")
-                            print(f"- Problematic JSON text: {json_text}")
-                            validation_result = False
-                            continue  # Skip to the next tool_call_element
+                            # Prioritize json.loads for better error handling
+                            json_data = json.loads(json_text)  # Use json.loads first
+                        except json.JSONDecodeError:
+                            try:
+                                # Fallback to ast.literal_eval if json.loads fails
+                                json_data = ast.literal_eval(json_text)
+                            except SyntaxError as err:
+                                print(f"JSON parsing failed with both json.loads and ast.literal_eval:")
+                                print(f"- JSON Decode Error: {err}")
+                                print(f"- Problematic JSON text: {json_text}")
+                                validation_result = False
+                                continue  # Skip to the next tool_call_element
 
-                    extracted_data.append(json_data)
-                    validation_result = True
-
-                return validation_result, extracted_data
-
-            except ET.ParseError as xml_error:
-                print(f"XML Parse Error: {xml_error}")
-                return validation_result, extracted_data
-
+                        extracted_data.append(json_data)
+                        validation_result = True
+                            
+                except ET.ParseError as err:
+                    if "mismatched tag" in str(err):
+                        # Skip section on mismatched tag error
+                        print(err)
+                    else:
+                        print(f"XML Parse Error: {err}")
         else:
             print("No match found for the assistant pattern.")
             return validation_result, extracted_data
@@ -156,7 +160,7 @@ if __name__ == "__main__":
 
     # Evaluate the dataset
     model_evaluator.evaluate_dataset(eval_dataset, args.chat_template, args.example)
-    results_path = '/home/interstellarninja/ai_projects/axolotl/examples/stablelm/eval_results.json'
+    results_path = '/home/interstellarninja/ai_projects/axolotl/examples/phi/eval_results.json'
     with open(results_path, 'w') as file:
         json.dump(model_evaluator.eval_results, file)
 
