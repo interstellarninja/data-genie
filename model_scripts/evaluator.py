@@ -5,23 +5,37 @@ import json
 import re
 import ast
 import xml.etree.ElementTree as ET
+
 from datasets import load_dataset
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import (
+    AutoModelForCausalLM, 
+    AutoTokenizer,
+    BitsAndBytesConfig
+)
 
 class ModelEvaluator:
     def __init__(self, model_path):
         logging.getLogger("transformers.tokenization_utils_base").setLevel(logging.ERROR)
+        self.bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_use_double_quant=True,
+        )
         self.model = AutoModelForCausalLM.from_pretrained(
             model_path,
             trust_remote_code=True,
             return_dict=True,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            quantization_config=self.bnb_config,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
         )
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "left"
         self.eval_results = []
+        print(self.model.config)
+        print(self.model.generation_config)
+        print(self.model.parameters)
 
     def validate_and_extract_tool_calls(self, completion, chat_template):
         # Define a pattern to find the assistant message
@@ -33,9 +47,9 @@ class ModelEvaluator:
 
         validation_result = False
         extracted_data = []
+
         if assistant_match:
             assistant_content = assistant_match.group(1).strip()
-            print(assistant_content)
 
             xml_sections = re.split(r"(?<=</tool_call>)", assistant_content)
             for xml_section in xml_sections:
@@ -43,9 +57,10 @@ class ModelEvaluator:
                     # Skip sections without opening tag
                     continue
                 elif "</tool_call>" not in xml_section:
-                    xml_section += "</tool_call>"  
+                    xml_section += "</tool_call>"
+
                 try:
-                    # Wrap section in root element  
+                    # Wrap section in root element
                     xml_section = f"<root>{xml_section}</root>"
                     # Parse XML
                     root = ET.fromstring(xml_section)
@@ -53,9 +68,10 @@ class ModelEvaluator:
                     # Extract JSON data
                     for element in root.findall(".//tool_call"):
                         json_text = element.text.strip()
+
                         try:
                             # Prioritize json.loads for better error handling
-                            json_data = json.loads(json_text)  # Use json.loads first
+                            json_data = json.loads(json_text)
                         except json.JSONDecodeError:
                             try:
                                 # Fallback to ast.literal_eval if json.loads fails
@@ -64,21 +80,23 @@ class ModelEvaluator:
                                 print(f"JSON parsing failed with both json.loads and ast.literal_eval:")
                                 print(f"- JSON Decode Error: {err}")
                                 print(f"- Problematic JSON text: {json_text}")
-                                validation_result = False
                                 continue  # Skip to the next tool_call_element
 
                         extracted_data.append(json_data)
                         validation_result = True
-                            
+
                 except ET.ParseError as err:
                     if "mismatched tag" in str(err):
                         # Skip section on mismatched tag error
                         print(err)
                     else:
                         print(f"XML Parse Error: {err}")
+
         else:
             print("No match found for the assistant pattern.")
-            return validation_result, extracted_data
+
+        # Return default values if no valid data is extracted
+        return validation_result, extracted_data
         
     def validate_func_calls(self, generated_arguments, expected_arguments):
         for key, expected_value in expected_arguments.items():
