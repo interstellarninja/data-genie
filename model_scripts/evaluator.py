@@ -7,6 +7,7 @@ import json
 import re
 import ast
 import xml.etree.ElementTree as ET
+from colorama import init, Fore, Back, Style
 
 from tqdm import tqdm
 from tokenization_arcade100k import Arcade100kTokenizer
@@ -109,9 +110,24 @@ class ModelEvaluator:
     def validate_func_calls(self, generated_arguments, expected_arguments):
         for key, expected_value in expected_arguments.items():
             if generated_arguments.get(key) != expected_value:
-                print(f"Function args do not match; expected:{expected_value}\ngot:{generated_arguments.get(key)}")
+                self.print_validation_message(expected_value, generated_arguments.get(key), key)
                 return "failed"
         return "passed"
+
+    def print_validation_message(expected, got, arg_name):
+        # ANSI escape codes for styling
+        bold = "\033[1m"
+        red = "\033[91m"
+        end_color = "\033[0m"
+
+        # Format the error message
+        error_message = (
+            f"{bold}Function args do not match;{end_color} "
+            f"{red}expected:{expected}{end_color} "
+            f"{red}got:{got}{end_color}\n"
+            f"{bold}{arg_name} validation:{end_color} {red}failed{end_color}"
+        )
+        print(error_message)
 
     def evaluate_dataset(self, eval_dataset, chat_template, example="False"):
 
@@ -203,7 +219,17 @@ if __name__ == "__main__":
     parser.add_argument("--dpo", type=str, default="False", help="Option to create dpo sample")
     parser.add_argument("--num_samples", type=int, default=None, help="Option to subset eval dataset")
     args = parser.parse_args()
-    
+
+    # Initialize colorama
+    init(autoreset=True)
+
+    try:
+        # Your code that may raise an exception
+        result = 1 / 0
+    except Exception as e:
+        # Print the exception with color
+        print(f"{Fore.RED}{Style.BRIGHT}Error: {e}{Style.RESET_ALL}")
+
     # Load evaluation dataset
     #eval_dataset = load_dataset("NousResearch/func-calling-eval")['train']
     if args.num_samples:

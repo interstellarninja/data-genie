@@ -1,4 +1,5 @@
 # utility functions
+import ast
 import json
 import os
 import re
@@ -163,8 +164,51 @@ def fix_tools_format(tool):
 
         return tool
 
+def get_assistant_message(completion):
+    message  = json.loads(completion)['choices'][0]['message']
+    if message['tool_calls']:
+        tool_calls = []
+        for tool_call in message['tool_calls']:
+            tool_calls.append(tool_call['function'])
+        return tool_calls
+    else:
+        return message['content']
+    
+def extract_toolcall_code_blocks(content):
+    # Define the pattern to find all tool_call blocks
+    pattern = r"```tool_call\s*({.*?})\s*```"
 
+    # Find all matches
+    matches = re.findall(pattern, content, re.DOTALL)
 
+    # Process the matches
+    result = []
+    for match in matches:
+        try:
+            # Load as JSON
+            json_data = ast.literal_eval(match)
+            result.append(json_data)
+        except Exception as e:
+            print(f"Error processing block {match}: {e}")
+    return result
+
+def extract_tool_code_block(content):
+     # Define the pattern to find all tool_call blocks
+    pattern = r"```tools\s*({.*?})\s*```"
+
+    # Find all matches
+    match = re.search(pattern, content, re.DOTALL)
+
+    # Process the matches
+    result = None
+    if match:
+        try:
+            # Load as JSON
+            json_data = ast.literal_eval(match.group(1))
+            result = json_data
+        except Exception as e:
+            print(f"Error processing block {match.group(0)}: {e}")
+    return result
 
 
 

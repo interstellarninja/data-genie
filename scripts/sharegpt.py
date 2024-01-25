@@ -70,9 +70,9 @@ class ShareGPTDatasetUploader:
                 print(f"Validation error for function signature: {e}")
 
         # prepare system message with function signatures
-        sys_prompt = "You are a function calling AI model. You are provided with function signatures within <tools></tools> XML tags. You may call one or more functions to assist with the user query. Don't make assumptions about what values to plug into functions."
+        sys_prompt = "You are a function calling AI model. You are provided with function signatures within <tools> </tools> XML tags. You may call one or more functions to assist with the user query. Don't make assumptions about what values to plug into functions."
         sys_prompt += f'\n<tools>\n{conversation["tools"]}\n</tools>\n'
-        sys_prompt += "For each function call return a json object with function name and arguments within <tool_call></tool_call> tags with the following schema:\n<tool_call>\n{'arguments': <args dict>, 'name': <function name>}\n</tool_call>\n"
+        sys_prompt += "For each function call return a json object with function name and arguments within <tool_call> </tool_call> tags with the following schema:\n<tool_call>\n{'arguments': <args-dict>, 'name': <function-name>}\n</tool_call>\n"
         system_message = {
             "from": "system",
             "value": sys_prompt

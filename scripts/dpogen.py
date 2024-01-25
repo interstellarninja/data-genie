@@ -121,14 +121,15 @@ class DPOGenerator:
             if accepted and rejected:
                 accepted_calls = ""
                 for tool_call in accepted:
+
                     accepted_calls += f"```tool_call\n{tool_call['function']}\n```\n"
                 rejected_calls = ""
                 for tool_call in rejected:
                     rejected_calls += f"```tool_call\n{tool_call['function']}\n```\n"
                 return {"id": str(uuid.uuid4()),
                         "system": f'```tools\n{tools}\n```',
-                        "human": user_message,
-                        "accepted": accepted_calls,
+                        "user": user_message,
+                        "chosen": accepted_calls,
                         "rejected": rejected_calls}         
         return None
     
@@ -156,19 +157,54 @@ class DPOGenerator:
                     with open(file_path) as file:
                         json_data = json.load(file)
                     
-                    json_data["category"] = category
-                    json_data["subcategory"] = subcategory
-                    json_data["task"] = task
+                     # prepare system message with function signatures
+                    id_value = json_data.pop("id")
+                    sys_prompt = "You are a function calling AI model. You are provided with function signatures within <tools> </tools> XML tags. You may call one or more functions to assist with the user query. Don't make assumptions about what values to plug into functions."
+                    sys_prompt += f'\n<tools>\n{utils.extract_tool_code_block(json_data["system"])}\n<tools>\n'
+                    sys_prompt += "For each function call return a json object with function name and arguments within <tool_call> </tool_call> XML tags with the following schema:\n<tool_call>\n{'arguments': <args-dict>, 'name': <function-name>}\n</tool_call>\n"
+                    user_message = json_data.pop("human")
+                    
+                    chosen_content = utils.extract_toolcall_code_blocks(json_data.pop("accepted"))
+                    
+                    if chosen_content:
+                        chosen_message = ""
+                        for tool_call in chosen_content:
+                            chosen_message += f"<tool_call>\n{tool_call}\n</tool_call>\n"
+                    else:
+                        chosen_message = json_data.pop("accepted")
 
-                    dpo_dataset.append(json_data)
+                    rejected_content = utils.extract_toolcall_code_blocks(json_data.pop("rejected"))
+                    
+                    if rejected_content:
+                        rejected_message = ""
+                        for tool_call in rejected_content:
+                            rejected_message += f"<tool_call>\n{tool_call}\n</tool_call>\n"
+                    else:
+                        rejected_message = json_data.pop("rejected")
+
+                    print(f"accepted: {chosen_message}\nrejected: {rejected_message}")
+
+                    dpo_dataset.append({
+                        #"id": id_value,
+                        "system": sys_prompt,
+                        "question": user_message,
+                        "chosen": chosen_message,
+                        "rejected": rejected_message
+                        #"category": category,
+                        #"subcategory": subcategory,
+                        #"task": task
+                    })
 
         return dpo_dataset
                     
 
     def format_and_upload_to_hub(self, upload=False):
-        dpo_dataset = self.load_dpo_dataset()
+        if os.path.exists("./fireworks_dpo.json"):
+            with open("./fireworks_dpo.json") as file:
+                fireworks_dpo = json.load(file)
+            dpo_dataset = fireworks_dpo
+        dpo_dataset += self.load_dpo_dataset()         
         dataset = Dataset.from_list(dpo_dataset)
-
         with open(self.json_path, 'w') as file:
             json.dump(dpo_dataset, file)
 
