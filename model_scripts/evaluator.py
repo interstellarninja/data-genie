@@ -1,11 +1,15 @@
 import argparse
 import logging
+import time
+import uuid
 import torch
 import json
 import re
 import ast
 import xml.etree.ElementTree as ET
 
+from tqdm import tqdm
+from tokenization_arcade100k import Arcade100kTokenizer
 from datasets import load_dataset
 from transformers import (
     AutoModelForCausalLM, 
@@ -14,7 +18,7 @@ from transformers import (
 )
 
 class ModelEvaluator:
-    def __init__(self, model_path):
+    def __init__(self, model_path, dpo="False"):
         logging.getLogger("transformers.tokenization_utils_base").setLevel(logging.ERROR)
         self.bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,
@@ -27,12 +31,16 @@ class ModelEvaluator:
             return_dict=True,
             quantization_config=self.bnb_config,
             torch_dtype=torch.bfloat16,
+            attn_implementation="flash_attention_2",
             device_map="auto",
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+
+        self.tokenizer = Arcade100kTokenizer.from_pretrained(model_path)
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "left"
         self.eval_results = []
+        if dpo == "True":
+            self.dpo_results = []
         print(self.model.config)
         print(self.model.generation_config)
         print(self.model.parameters)
@@ -40,13 +48,13 @@ class ModelEvaluator:
     def validate_and_extract_tool_calls(self, completion, chat_template):
         # Define a pattern to find the assistant message
         if chat_template == "zephyr":
-            assistant_pattern = re.compile(r'<\|assistant\|>((?:(?!<\|assistant\|>|</s>).)*)</s>', re.DOTALL)
+            assistant_pattern = re.compile(r'<\|assistant\|>((?:(?!<\|assistant\|>).)*)$', re.DOTALL)
         elif chat_template == "chatml":
             assistant_pattern = re.compile(r'<\\|im_start\\|>assistant((?:(?!<\\|im_start\\|>assistant).)*)$', re.DOTALL)
         assistant_match = assistant_pattern.search(completion)
 
         validation_result = False
-        extracted_data = []
+        tool_calls = []
 
         if assistant_match:
             assistant_content = assistant_match.group(1).strip()
@@ -82,7 +90,7 @@ class ModelEvaluator:
                                 print(f"- Problematic JSON text: {json_text}")
                                 continue  # Skip to the next tool_call_element
 
-                        extracted_data.append(json_data)
+                        tool_calls.append(json_data)
                         validation_result = True
 
                 except ET.ParseError as err:
@@ -96,18 +104,19 @@ class ModelEvaluator:
             print("No match found for the assistant pattern.")
 
         # Return default values if no valid data is extracted
-        return validation_result, extracted_data
+        return validation_result, tool_calls, assistant_content
         
     def validate_func_calls(self, generated_arguments, expected_arguments):
         for key, expected_value in expected_arguments.items():
             if generated_arguments.get(key) != expected_value:
-                print(f"Function args do not match; expected:{expected_value}, got:{generated_arguments.get(key)}")
+                print(f"Function args do not match; expected:{expected_value}\ngot:{generated_arguments.get(key)}")
                 return "failed"
         return "passed"
 
     def evaluate_dataset(self, eval_dataset, chat_template, example="False"):
 
-        for sample in eval_dataset:
+        for sample in tqdm(eval_dataset, desc="processing samples", unit="sample"):
+            
             example_prompt = "###Example\nAn example usage of functions is as follows\n```\nSYSTEM: You are a helpful assistant who has access to functions. Use them if required\n<tools>[\n {\n \"name\": \"calculate_distance\",\n \"description\": \"Calculate the distance between two locations\",\n \"parameters\": {\n \"type\": \"object\",\n \"properties\": {\n \"origin\": {\n \"type\": \"string\",\n \"description\": \"The starting location\"\n },\n \"destination\": {\n \"type\": \"string\",\n \"description\": \"The destination location\"\n },\n \"mode\": {\n \"type\": \"string\",\n \"description\": \"The mode of transportation\"\n }\n },\n \"required\": [\n \"origin\",\n \"destination\",\n \"mode\"\n ]\n }\n },\n {\n \"name\": \"generate_password\",\n \"description\": \"Generate a random password\",\n \"parameters\": {\n \"type\": \"object\",\n \"properties\": {\n \"length\": {\n \"type\": \"integer\",\n \"description\": \"The length of the password\"\n }\n },\n \"required\": [\n \"length\"\n ]\n }\n }\n]\n\n</tools>\nUSER: Hi, I need to know the distance from New York to Los Angeles by car.\nASSISTANT:\n<tool_call>\n{\"arguments\": {\"origin\": \"New York\",\n \"destination\": \"Los Angeles\", \"mode\": \"car\"}, \"name\": \"calculate_distance\"}\n</tool_call>\n```\n"
             if example == "True":
                 sample['prompt'][0]['content'] += example_prompt
@@ -116,6 +125,7 @@ class ModelEvaluator:
             #    {'role': 'system', 'content': sample["system"]},
             #    {'role': 'user', 'content': sample["user"]}
             #]
+            print(sample['prompt'])
             inputs = self.tokenizer.apply_chat_template(
                 sample['prompt'],
                 add_generation_prompt=True,
@@ -130,34 +140,56 @@ class ModelEvaluator:
             )
 
             completion = self.tokenizer.decode(tokens[0], skip_special_tokens=False)
-
-            validation, assistant_message = self.validate_and_extract_tool_calls(completion, chat_template)
+            print(completion)
+            validation, tool_calls, assistant_message = self.validate_and_extract_tool_calls(completion, chat_template)
             print(assistant_message)
 
-            if validation:
-                function_found = False
+            sample['model_completion'] = ""
+            sample['result'] = "failed"
+
+            if validation:           
                 eval_tool_calls = json.loads(sample['completion'])
-                for tool_call in assistant_message:
-                    if tool_call['name'] == eval_tool_calls['name']:
-                        result = self.validate_func_calls(tool_call['arguments'], eval_tool_calls['arguments'])
-                        print(result)
-                        function_found = True
-                        break
+                
+                all_valid = True
+                
+                for eval_tool_call in eval_tool_calls:
+                    function_found = False
+                    
+                    for tool_call in tool_calls:
+                        if tool_call['name'] == eval_tool_call['name']:
+                            function_found = True
+                            result = self.validate_func_calls(tool_call['arguments'], eval_tool_call['arguments'])
+                            sample['model_completion'] += f"<tool_call>\n{tool_call}\n</tool_call>\n"
+                            print(f"{tool_call['name']} validation: {result}")
+                            if result == "failed":
+                                all_valid = False
+                                break
 
-                if not function_found:
-                    print("Function not found")
-                    result = "failed"
-                    print(result)
+                    if not function_found:
+                        print(f"Function '{eval_tool_call['name']}' not found")
+                        all_valid = False  
             else:
-                print("function call validation failed")
-                result = "failed"
-                print(result)
-
-            sample['model_completion'] = assistant_message
-            sample['result'] = result
+                print("Function call validation failed")
+                sample['model_completion'] = assistant_message 
+                all_valid = False
+            
+            if all_valid:
+                sample['result'] = "passed"
+            print(f"all validations: {sample['result']}")
 
             self.eval_results.append(sample)
-    
+            if self.dpo_results is not None and sample['result'] == "failed":
+                chosen_completion = ""
+                for tool_call in json.loads(sample['completion']):
+                    chosen_completion += f"<tool_call>\n{tool_call}\n<tool_call>\n"
+                self.dpo_results.append({
+                            #"id": str(uuid.uuid4()),
+                            "system": sample['system'],
+                            "question": sample['user'],
+                            "chosen": chosen_completion,
+                            "rejected": sample['model_completion']
+                })
+
     def calculate_pass_rate(self):
         passed_count =sum(1 for sample in self.eval_results if sample["result"] == "passed")
         pass_rate = passed_count / len(self.eval_results)
@@ -168,19 +200,31 @@ if __name__ == "__main__":
     parser.add_argument("--model_path", type=str, help="Path to the model folder")
     parser.add_argument("--chat_template", type=str, default="chatml", help="Chat template for prompt formatting")
     parser.add_argument("--example", type=str, default="False", help="Option to include one-shot example in sys prompt")
+    parser.add_argument("--dpo", type=str, default="False", help="Option to create dpo sample")
+    parser.add_argument("--num_samples", type=int, default=None, help="Option to subset eval dataset")
     args = parser.parse_args()
     
     # Load evaluation dataset
-    eval_dataset = load_dataset("NousResearch/func-calling-eval")['train']
+    #eval_dataset = load_dataset("NousResearch/func-calling-eval")['train']
+    if args.num_samples:
+        eval_dataset = load_dataset("interstellarninja/tool-calls-sampled-prompts", split=f'train[:{args.num_samples}]')
+    else:
+        eval_dataset = load_dataset("interstellarninja/tool-calls-sampled-prompts")['train']
 
     # Create model evaluator instance
-    model_evaluator = ModelEvaluator(args.model_path)
+    model_evaluator = ModelEvaluator(args.model_path, args.dpo)
 
     # Evaluate the dataset
     model_evaluator.evaluate_dataset(eval_dataset, args.chat_template, args.example)
-    results_path = '/home/interstellarninja/ai_projects/axolotl/examples/phi/eval_results.json'
+    #results_path = '/home/interstellarninja/ai_projects/axolotl/examples/phi/eval_results.json'
+    results_path = '/home/interstellarninja/ai_projects/axolotl/examples/stablelm/eval_results.json'
     with open(results_path, 'w') as file:
         json.dump(model_evaluator.eval_results, file)
+
+    if args.dpo == "True":
+        dpo_path = '/home/interstellarninja/ai_projects/axolotl/examples/stablelm/dpo_selfgen.json'
+        with open(dpo_path, 'w') as file:
+            json.dump(model_evaluator.dpo_results, file)
 
     # Calculate and print pass rate
     pass_rate = model_evaluator.calculate_pass_rate()
