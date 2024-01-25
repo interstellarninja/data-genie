@@ -1,4 +1,6 @@
 # data-genie
 A synthetic data generation pipeline using LLMs and websearch over a curriculum
 
-![Image Alt Text](assets/data_genie.png)
+<p align="center">
+  <img src="images/image.png" alt="Image Alt Text" width="80%" height="80%">
+</p>
