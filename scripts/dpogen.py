@@ -199,11 +199,15 @@ class DPOGenerator:
                     
 
     def format_and_upload_to_hub(self, upload=False):
+        dpo_dataset = self.load_dpo_dataset()     
+        if os.path.exists("./dpo_selfgen.json"):
+            with open("./dpo_selfgen.json") as file:
+                dpo_selfgen = json.load(file)
+            dpo_dataset += dpo_selfgen
         if os.path.exists("./fireworks_dpo.json"):
             with open("./fireworks_dpo.json") as file:
                 fireworks_dpo = json.load(file)
-            dpo_dataset = fireworks_dpo
-        dpo_dataset += self.load_dpo_dataset()         
+            dpo_dataset += fireworks_dpo    
         dataset = Dataset.from_list(dpo_dataset)
         with open(self.json_path, 'w') as file:
             json.dump(dpo_dataset, file)
