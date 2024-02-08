@@ -1,0 +1,74 @@
+{
+    "messages": [
+        {
+            "role": "user",
+            "content": "Create a user named Alice, who lives in 42, Wonderland Avenue, Wonderland city, 91234 Dreamland."
+        },
+        {
+            "role": "assistant",
+            "content": {
+                "name": "Alice",
+                "address": {
+                    "street": "Wonderland Avenue",
+                    "city": "Wonderland",
+                    "country": "Dreamland",
+                    "zip": "91234"
+                },
+                "is_active": true
+            }
+        }
+    ],
+    "schema": {
+        "$defs": {
+            "Address": {
+                "properties": {
+                    "street": {
+                        "title": "Street",
+                        "type": "string"
+                    },
+                    "city": {
+                        "title": "City",
+                        "type": "string"
+                    },
+                    "country": {
+                        "title": "Country",
+                        "type": "string"
+                    },
+                    "zip": {
+                        "title": "Zip",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "street",
+                    "city",
+                    "country",
+                    "zip"
+                ],
+                "title": "Address",
+                "type": "object"
+            }
+        },
+        "properties": {
+            "name": {
+                "description": "user name",
+                "title": "Name",
+                "type": "string"
+            },
+            "is_active": {
+                "default": true,
+                "title": "Is Active",
+                "type": "boolean"
+            },
+            "address": {
+                "$ref": "#/$defs/Address"
+            }
+        },
+        "required": [
+            "name",
+            "address"
+        ],
+        "title": "User",
+        "type": "object"
+    }
+}

@@ -1,0 +1,35 @@
+{
+    "messages": [
+        {
+            "role": "user",
+            "content": "Create a user named Alice, who lives in 42, Wonderland Avenue."
+        },
+        {
+            "role": "assistant",
+            "content": {
+                "address": "42, Wonderland Avenue",
+                "name": "Alice"
+            }
+        }
+    ],
+    "schema": {
+        "title": "User",
+        "type": "object",
+        "properties": {
+            "name": {
+                "title": "Name",
+                "type": "string",
+                "description": "user name"
+            },
+            "address": {
+                "title": "Address",
+                "type": "string",
+                "description": "address"
+            }
+        },
+        "required": [
+            "name",
+            "address"
+        ]
+    }
+}
