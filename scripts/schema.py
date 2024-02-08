@@ -65,3 +65,15 @@ class OutputSchema(BaseModel):
     tools: List[FunctionSignature] = Field(
         description="The tools array contains information about available functions or tools that can be called to answer the user query."
     )
+
+class JsonRequest(BaseModel):
+    role: str
+    content: Dict[str, str]
+
+class JsonResponse(BaseModel):
+    role: str
+    content: Dict[str, str]
+
+class JsonModeOutput(BaseModel):
+    messages: List[Union[JsonRequest, JsonResponse]]
+    schema: Dict[str, str]
