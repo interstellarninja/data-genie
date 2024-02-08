@@ -14,7 +14,7 @@ from tenacity import retry, stop_after_attempt, wait_random_exponential
 from langchain.schema import Document
 
 from aiutilities import AIUtilities
-from schema import OutputSchema
+from schema import OutputSchema, JsonModeOutput
 from promptmanager import PromptManager
 from search import WebSearch
 from vectordb import VectorDB
@@ -188,6 +188,12 @@ class DataGenPipeline:
             combined_documents = self.retrieve_and_combine_documents(query, num_results, folder_path, char_limit)
             combined_examples = self.retrieve_and_combine_examples(query, num_examples=2)
 
+            if type == "function_call":
+                output_schema = OutputSchema.model_json_schema()
+            elif type == "json_mode":
+                output_schema = JsonModeOutput.model_json_schema()
+            else:
+                print(f"Not Implemented Error: {type}")
             # Set variables for prompt YAML
             variables = {
                 "category": task[0],
@@ -195,7 +201,7 @@ class DataGenPipeline:
                 "task": task[2], 
                 "doc_list": combined_documents,
                 "examples": combined_examples,
-                "pydantic_schema": OutputSchema.schema_json(),
+                "pydantic_schema": output_schema,
             }
             prompt_manager = PromptManager(self.config)
             prompt_yaml_path = self.config["paths"]["prompt_yaml"]
@@ -212,7 +218,7 @@ class DataGenPipeline:
         else:
             return f"Data already generated for the {task_desc}"
     
-    def run_generation_pipeline(self, ai_vendor="openai", num_results=10, num_tasks=5):
+    def run_generation_pipeline(self, ai_vendor="openai", num_results=10, num_tasks=5, type="function_call"):
         curriculum_csv_path = self.config["paths"]["curriculum_csv"]
         with open(curriculum_csv_path, 'r') as csv_file:
             reader = csv.DictReader(csv_file)
@@ -223,7 +229,7 @@ class DataGenPipeline:
             self.initialize_vector_db()
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-            future_to_task = {executor.submit(self.run_data_generation, task, utils.generate_query(*task), ai_vendor, num_results): task for task in tasks}
+            future_to_task = {executor.submit(self.run_data_generation, task, utils.generate_query(*task), ai_vendor, num_results, type): task for task in tasks}
 
             for future in concurrent.futures.as_completed(future_to_task):
                 task = future_to_task[future]
@@ -241,10 +247,11 @@ if __name__ == "__main__":
     parser.add_argument("--ai_vendor", choices=["openai", "anthropic", "together", "anyscale"], default="openai", help="choose AI vendor (openai, anthropic, together, anyscale)")
     parser.add_argument("--num_results", type=int, default=10, help="Number of top-k documents for search results")
     parser.add_argument("--num_tasks", type=int, default=10, help="Number of tasks to generate data for")
+    parser.add_argument("--type", type=str, default="function_call", help="type of data generation")
 
     args = parser.parse_args()
 
   # Example usage for running analysis for companies in a CSV file
     config_path = "./config.yaml"
     datagen = DataGenPipeline(config_path)
-    datagen.run_generation_pipeline(ai_vendor=args.ai_vendor, num_results=args.num_results, num_tasks=args.num_tasks)
+    datagen.run_generation_pipeline(ai_vendor=args.ai_vendor, num_results=args.num_results, num_tasks=args.num_tasks, type=args.type)
