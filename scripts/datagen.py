@@ -44,10 +44,11 @@ logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
 class DataGenPipeline:
-    def __init__(self, config_path):
+    def __init__(self, config_path, type):
         # load config
         with open(config_path, "r") as f:
             self.config = yaml.safe_load(f)
+        self.generation_type = type
         self.ai_utilities = AIUtilities()
         self.web_search_client = WebSearch()
         self.vector_db = None
@@ -88,7 +89,7 @@ class DataGenPipeline:
     
     def initialize_vector_db(self):
             schema_path = self.config["paths"]["redis_schema"]
-            examples_path = self.config["paths"]["examples_path"]
+            examples_path = os.path.join(self.config["paths"]["examples_path"], self.generation_type)
             results_path = self.config["paths"]["results_corrected"]
             self.vector_db = VectorDB()
             try:
@@ -161,39 +162,49 @@ class DataGenPipeline:
             self.file_write_lock.release()
     
     @retry(wait=wait_random_exponential(multiplier=1, max=30), stop=stop_after_attempt(3))
-    def run_data_generation(self, task, query, ai_vendor, num_results):
+    def run_data_generation(self, task, query, ai_vendor, num_results, combined_documents=None):
         # search results folder path
+        max_length = 255
+        if len(task[2]) > max_length:
+            trunc_task = task[2][:max_length - 15] 
         today_date = datetime.date.today()
         folder_name = f"search_results/{today_date}"
-        folder_path = os.path.join(os.getcwd(), folder_name, task[0], task[1], task[2])
+        folder_path = os.path.join(os.getcwd(), folder_name, task[0], task[1], trunc_task)
         folder_path = folder_path.replace(' ', '_')
         os.makedirs(folder_path, exist_ok=True)
         
          # Create a folder for each task if it doesn't exist
-        task_desc = f"{task[0]}_{task[1]}_{task[2]}"
+        task_desc = f"{task[0]}_{task[1]}_{trunc_task}"
         task_desc = task_desc.replace(' ', '_')
         results_path = f"results/{ai_vendor}_{today_date}"
         results_path = os.path.join(os.getcwd(), results_path, task[0], task[1])
         results_path = results_path.replace(' ', '_')
         os.makedirs(results_path, exist_ok=True)
 
-        file_path = os.path.join(results_path, f"{task[2]}.json")
+        file_path = os.path.join(results_path, f"{trunc_task}.json")
         file_path = file_path.replace(' ', '_')
+        print(file_path)
         # Check if the file already exists
         if not os.path.exists(file_path):
             ctx_len = self.ai_utilities.get_ai_context_length(ai_vendor)
             char_limit = (int(ctx_len) - 8000) * 2
             logger.info(f"The character limit for documents is:{char_limit}")
 
-            combined_documents = self.retrieve_and_combine_documents(query, num_results, folder_path, char_limit)
+            if combined_documents is None:
+                combined_documents = self.retrieve_and_combine_documents(query, num_results, folder_path, char_limit)
+            print(combined_documents)
             combined_examples = self.retrieve_and_combine_examples(query, num_examples=2)
-
-            if type == "function_call":
-                output_schema = OutputSchema.model_json_schema()
-            elif type == "json_mode":
-                output_schema = JsonModeOutput.model_json_schema()
+            print(combined_examples)
+            
+            # Set output schema
+            if self.generation_type == "function_call":
+                output_schema = OutputSchema.schema_json()
+            elif self.generation_type == "json_mode":
+                output_schema = JsonModeOutput.schema_json()
+                print(JsonModeOutput.schema_json(indent=2))
             else:
                 print(f"Not Implemented Error: {type}")
+            
             # Set variables for prompt YAML
             variables = {
                 "category": task[0],
@@ -204,7 +215,7 @@ class DataGenPipeline:
                 "pydantic_schema": output_schema,
             }
             prompt_manager = PromptManager(self.config)
-            prompt_yaml_path = self.config["paths"]["prompt_yaml"]
+            prompt_yaml_path = os.path.join(self.config["paths"]["prompt_yaml"], f"{self.generation_type}.yaml")
             prompt = prompt_manager.generate_prompt(variables, prompt_yaml_path)
             logger.info(f"Logging prompt text\n{prompt}")
             
@@ -218,8 +229,8 @@ class DataGenPipeline:
         else:
             return f"Data already generated for the {task_desc}"
     
-    def run_generation_pipeline(self, ai_vendor="openai", num_results=10, num_tasks=5, type="function_call"):
-        curriculum_csv_path = self.config["paths"]["curriculum_csv"]
+    def run_generation_pipeline(self, ai_vendor="openai", num_results=10, num_tasks=5):
+        curriculum_csv_path = os.path.join(self.config["paths"]["curriculum_csv"], f"{self.generation_type}.csv")
         with open(curriculum_csv_path, 'r') as csv_file:
             reader = csv.DictReader(csv_file)
             tasks = [(row['Category'], row['SubCategory'], row['Task']) for row in islice(reader, num_tasks)]
@@ -228,8 +239,8 @@ class DataGenPipeline:
         if not self.vector_db:
             self.initialize_vector_db()
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-            future_to_task = {executor.submit(self.run_data_generation, task, utils.generate_query(*task), ai_vendor, num_results, type): task for task in tasks}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_task = {executor.submit(self.run_data_generation, task, utils.generate_query(*task), ai_vendor, num_results): task for task in tasks}
 
             for future in concurrent.futures.as_completed(future_to_task):
                 task = future_to_task[future]
@@ -253,5 +264,5 @@ if __name__ == "__main__":
 
   # Example usage for running analysis for companies in a CSV file
     config_path = "./config.yaml"
-    datagen = DataGenPipeline(config_path)
-    datagen.run_generation_pipeline(ai_vendor=args.ai_vendor, num_results=args.num_results, num_tasks=args.num_tasks, type=args.type)
+    datagen = DataGenPipeline(config_path, args.type)
+    datagen.run_generation_pipeline(ai_vendor=args.ai_vendor, num_results=args.num_results, num_tasks=args.num_tasks)
