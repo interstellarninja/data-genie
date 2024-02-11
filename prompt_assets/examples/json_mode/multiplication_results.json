@@ -1,0 +1,60 @@
+{
+    "messages": [
+      {
+        "role": "user",
+        "content": "Please generate a JSON output for the multiplication results of the following pairs of three-digit numbers: 123 and 456, 789 and 321, 654 and 987. Include the input numbers and the calculated result for each pair."
+      },
+      {
+        "role": "assistant",
+        "content": {
+          "MultiplicationResults": [
+            {
+              "InputA": 123,
+              "InputB": 456,
+              "Result": 56088
+            },
+            {
+              "InputA": 789,
+              "InputB": 321,
+              "Result": 253269
+            },
+            {
+              "InputA": 654,
+              "InputB": 987,
+              "Result": 645678
+            }
+          ]
+        }
+      }
+    ],
+    "pydantic_schema": {
+      "MultiplicationResult": {
+        "type": "object",
+        "properties": {
+          "InputA": {
+            "type": "integer",
+            "title": "InputA"
+          },
+          "InputB": {
+            "type": "integer",
+            "title": "InputB"
+          },
+          "Result": {
+            "type": "integer",
+            "title": "Result"
+          }
+        },
+        "required": [
+          "InputA",
+          "InputB",
+          "Result"
+        ]
+      },
+      "MultiplicationResults": {
+        "type": "array",
+        "items": {
+          "$ref": "#/MultiplicationResult"
+        }
+      }
+    }
+  }

@@ -1,0 +1,38 @@
+{
+    "messages": [
+      {
+        "role": "user",
+        "content": "Search the web and return the 2023 Q4 revenue of Tesla. Provide a plan using agent thought process framework"
+      },
+      {
+        "role": "assistant",
+        "content": {
+          "Plan": {
+            "Thought": "Utilize search engines and financial news websites to gather information about Tesla's 2023 Q4 revenue.",
+            "Criticism": "Verify the credibility and reliability of the sources providing the revenue information.",
+            "Action": "Retrieve the revenue data, cross-reference it with multiple sources if possible, and present the findings."
+          }
+        }
+      }   
+    ],
+    "pydantic_schema": {
+      "title": "Plan",
+      "type": "object",
+      "properties": {
+        "Thought": {
+          "title": "Thought",
+          "type": "string"
+        },
+        "Criticism": {
+          "title": "Criticism",
+          "type": "string"
+        },
+        "Action": {
+          "title": "Action",
+          "type": "string"
+        }
+      },
+      "required": ["Thought", "Criticism", "Action"]
+    }
+}
+  

@@ -1,0 +1,76 @@
+{
+    "messages": [
+      {
+        "role": "user",
+        "content": "Please generate a JSON object representation for a task planning system that needs to break down the question 'What is the population difference between the adjacent countries of Germany and the adjacent countries of France?' into a series of dependent subtasks. The system should identify each country, determine their adjacent countries, calculate the total population of those countries, and finally compute the population difference. The task planning should ensure tasks are executed in the correct order using topological sort."
+      },
+      {
+        "role": "assistant",
+        "content": {
+          "task_graph": [
+            {
+              "id": 1,
+              "task": "Identify Germany's adjacent countries",
+              "subtasks": []
+            },
+            {
+              "id": 2,
+              "task": "Calculate the total population of Germany's adjacent countries",
+              "subtasks": [1]
+            },
+            {
+              "id": 3,
+              "task": "Identify France's adjacent countries",
+              "subtasks": []
+            },
+            {
+              "id": 4,
+              "task": "Calculate the total population of France's adjacent countries",
+              "subtasks": [3]
+            },
+            {
+              "id": 5,
+              "task": "Compute the population difference between the adjacent countries of Germany and France",
+              "subtasks": [2, 4]
+            }
+          ]
+        }
+      }
+    ],
+    "pydantic_schema": {
+      "Task": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "id"
+          },
+          "task": {
+            "type": "string",
+            "title": "task"
+          },
+          "subtasks": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "title": "subtasks"
+          }
+        },
+        "required": ["id", "task", "subtasks"]
+      },
+      "TaskGraph": {
+        "type": "object",
+        "properties": {
+          "task_graph": {
+            "type": "array",
+            "items": {
+              "$ref": "#/Task"
+            },
+            "title": "task_graph"
+          }
+        },
+        "required": ["task_graph"]
+      }
+    }
+  }

@@ -1,0 +1,72 @@
+{
+    "messages": [
+        {
+            "role": "user",
+            "content": "Could you please create a Pokemon character as a json object?"
+        },
+        {
+            "role": "assistant",
+            "content": {
+                "name": "Gloomwing",
+                "rarity": "Common",
+                "level": 5,
+                "element_type": "Dark",
+                "lore_entry": "The Gloomwing is a creature that is said to bring misfortune to those who see it. Its dark wings are said to be a sign of bad luck, and it's said to be a bad omen when one flies overhead. It's said that if you're lucky enough to catch one, your luck will change.",
+                "stats": {
+                    "ATK": 35,
+                    "DEF": 25,
+                    "HP": 55,
+                    "SPATK": 55,
+                    "SPDEF": 35
+                },
+                "weight": 25.5,
+                "height": 2.25
+            }
+        }
+    ],
+    "pydantic_schema": {
+        "$defs": {
+            "Character": {
+                "title": "Character",
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "title": "Name",
+                        "type": "string"
+                    },
+                    "appearance": {
+                        "title": "Appearance",
+                        "type": "string"
+                    },
+                    "personality": {
+                        "title": "Personality",
+                        "type": "string"
+                    },
+                    "relationships": {
+                        "title": "Relationships",
+                        "type": "string"
+                    },
+                    "house": {
+                        "title": "House",
+                        "type": "string"
+                    },
+                    "magic_skills": {
+                        "title": "Magic Skills",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "name",
+                    "appearance",
+                    "personality",
+                    "relationships",
+                    "house",
+                    "magic_skills"
+                ]
+            }
+        }
+    }
+}
