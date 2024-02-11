@@ -90,9 +90,10 @@ class WebSearch:
                 table_rows = [[cell.get_text(strip=True) for cell in row.find_all('td')] for row in table.find_all('tr')]
                 table_data.append(table_rows)
             
-            return {'url': url, 
-                    'content': text_content,
-                    'tables': table_data}
+            if text_content is not None or len(table_data) > 0:
+                return {'url': url, 
+                        'content': text_content,
+                        'tables': table_data}
 
         except requests.exceptions.RequestException as e:
             print(f"Error fetching content from {url}: {e}")
