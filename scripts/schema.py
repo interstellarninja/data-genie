@@ -68,7 +68,7 @@ class OutputSchema(BaseModel):
 
 class JsonRequest(BaseModel):
     role: str
-    content: Dict[str, str]
+    content: str
 
 class JsonResponse(BaseModel):
     role: str
@@ -76,4 +76,4 @@ class JsonResponse(BaseModel):
 
 class JsonModeOutput(BaseModel):
     messages: List[Union[JsonRequest, JsonResponse]]
-    schema: Dict[str, str]
+    pydantic_schema: Dict[str, str]
