@@ -30,6 +30,9 @@ def combine_search_result_documents(search_results, char_limit):
             # Remove special characters from content
             cleaned_content = remove_special_characters(content)
 
+            if "tables" in item:
+                cleaned_content += f"\n{convert_tables_to_markdown(item['tables'])}"
+
             # Check if appending the current document exceeds the token limit
             if character_count + len(cleaned_content) > char_limit:
                 print(f"Character limit reached. Stopping further document append.")
@@ -44,6 +47,23 @@ def combine_search_result_documents(search_results, char_limit):
             combined_text += '\n</doc>\n'
             logger.info(f"Document from {url} added to the combined text")
     return combined_text
+
+def convert_tables_to_markdown(tables):
+    markdown = ""
+    for table in tables:
+        markdown += "|"
+        for header in table[0]:
+            markdown += f" {header} |"
+        markdown += "\n|"
+        for _ in table[0]:
+            markdown += " --- |"
+        markdown += "\n"
+        for row in table[1:]:
+            markdown += "|"
+            for cell in row:
+                markdown += f" {cell} |"
+            markdown += "\n"
+    return markdown
 
 def combine_examples(docs, type=None):
     examples = ""
@@ -108,23 +128,6 @@ def extract_json_from_response(response_string):
     except ValidationError as e:
         print(f"Error validating JSON against schema: {e}")
         return None
-
-def convert_tables_to_markdown(tables):
-    markdown = ""
-    for table in tables:
-        markdown = "|"
-        for header in table[0]:
-            markdown += f" {header[0]} |"
-        markdown += "\n|"
-        for _ in table[0]:
-            markdown += " --- |"
-        markdown += "\n"
-        for row in table[1:]:
-            markdown += "|"
-            for cell in row:
-                markdown += f" {cell[1]} |"
-            markdown += "\n"
-    return markdown
 
 def convert_enum_to_list(prop_data):
     if "enum" in prop_data:
