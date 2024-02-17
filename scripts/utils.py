@@ -15,8 +15,8 @@ def load_yaml(file_path):
         config = yaml.safe_load(f)
     return config
 
-def generate_query(category, subcategory, task):
-    return f'"{category}" "{subcategory}" {task} AND (documentation OR functions OR examples OR code)'
+def generate_query(task):
+    return f'"{task["Category"]}" "{task["SubCategory"]}" {task["Task"]} AND (documentation OR functions OR examples OR code)'
 
 def combine_search_result_documents(search_results, char_limit):
     combined_text = ''
@@ -213,6 +213,30 @@ def extract_tool_code_block(content):
             print(f"Error processing block {match.group(0)}: {e}")
     return result
 
+def strip_incomplete_text(text):
+    # Find the last occurrence of a full stop
+    last_full_stop_index = text.rfind('.')
+    
+    if last_full_stop_index != -1:  # If a full stop is found
+        # Return the text up to the last full stop
+        return text[:last_full_stop_index+1]  # Include the full stop
+    else:
+        # If no full stop is found, return the original text
+        return text
 
+def clean_file_path(file_path):
+    # Remove special characters
+    cleaned_file_path = re.sub(r'[^\w\s-]', '', file_path)
+    
+    # Replace spaces with underscores
+    cleaned_file_path = cleaned_file_path.replace(' ', '_')
+    
+    # Shorten the file path if it exceeds 255 characters
+    if len(cleaned_file_path) > 255:
+        base_path, file_name = os.path.split(cleaned_file_path)
+        file_name = file_name[:255 - len(base_path) - 1]  # Subtract 1 for the separator
+        cleaned_file_path = os.path.join(base_path, file_name)
+    
+    return cleaned_file_path
 
 

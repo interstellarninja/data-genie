@@ -163,27 +163,27 @@ class DataGenPipeline:
     
     @retry(wait=wait_random_exponential(multiplier=1, max=30), stop=stop_after_attempt(3))
     def run_data_generation(self, task, query, ai_vendor, num_results, combined_documents=None):
+        print(task['SubCategory'])
         # search results folder path
-        max_length = 255
-        if len(task[2]) > max_length:
-            trunc_task = task[2][:max_length - 15] 
+        max_length = 65
+        if len(task['Task']) > max_length:
+            trunc_task = task['Task'][:max_length - 10] 
+        trunc_task = utils.clean_file_path(trunc_task)
         today_date = datetime.date.today()
         folder_name = f"search_results/{today_date}"
-        folder_path = os.path.join(os.getcwd(), folder_name, task[0], task[1], trunc_task)
+        folder_path = os.path.join(os.getcwd(), folder_name, task['Category'], task['SubCategory'], trunc_task)
         folder_path = folder_path.replace(' ', '_')
         os.makedirs(folder_path, exist_ok=True)
-        
          # Create a folder for each task if it doesn't exist
-        task_desc = f"{task[0]}_{task[1]}_{trunc_task}"
+        task_desc = f'{task["Category"]}_{task["SubCategory"]}_{trunc_task}'
         task_desc = task_desc.replace(' ', '_')
         results_path = f"results/{ai_vendor}_{today_date}"
-        results_path = os.path.join(os.getcwd(), results_path, task[0], task[1])
+        results_path = os.path.join(os.getcwd(), results_path, task["Category"], task["SubCategory"])
         results_path = results_path.replace(' ', '_')
         os.makedirs(results_path, exist_ok=True)
-
+        print(results_path)
         file_path = os.path.join(results_path, f"{trunc_task}.json")
         file_path = file_path.replace(' ', '_')
-        print(file_path)
         # Check if the file already exists
         if not os.path.exists(file_path):
             ctx_len = self.ai_utilities.get_ai_context_length(ai_vendor)
@@ -207,9 +207,10 @@ class DataGenPipeline:
             
             # Set variables for prompt YAML
             variables = {
-                "category": task[0],
-                "subcategory": task[1],
-                "task": task[2], 
+                "category": task['Category'],
+                "subcategory": task['SubCategory'],
+                "task": task['Task'], 
+                "task_schema": task['Schema'],
                 "doc_list": combined_documents,
                 "examples": combined_examples,
                 "pydantic_schema": output_schema,
@@ -229,27 +230,42 @@ class DataGenPipeline:
         else:
             return f"Data already generated for the {task_desc}"
     
-    def run_generation_pipeline(self, ai_vendor="openai", num_results=10, num_tasks=5):
-        curriculum_csv_path = os.path.join(self.config["paths"]["curriculum_csv"], f"{self.generation_type}.csv")
-        with open(curriculum_csv_path, 'r') as csv_file:
-            reader = csv.DictReader(csv_file)
-            tasks = [(row['Category'], row['SubCategory'], row['Task']) for row in islice(reader, num_tasks)]
+    def run_generation_pipeline(self, ai_vendor, num_results, num_tasks, format):
+        
+        if format == "csv":
+            curriculum_csv_path = os.path.join(self.config["paths"]["curriculum_csv"], f"{self.generation_type}.csv")
+            with open(curriculum_csv_path, 'r') as csv_file:
+                reader = csv.DictReader(csv_file)
+                tasks = [(row['Category'], row['SubCategory'], row['Task'], row['Schema']) for row in islice(reader, num_tasks)]
+        elif format == "jsonl":
+            curriculum_csv_path = os.path.join(self.config["paths"]["curriculum_csv"], f"{self.generation_type}.jsonl")
+            with open(curriculum_csv_path, 'r') as json_file:
+            # Initialize an empty list to store parsed JSON objects
+                tasks = []
+                # Read each line (which represents a JSON object)
+                for line_num, line in enumerate(json_file, 1):
+                    try:
+                        # Parse the JSON object from the line and append it to the list
+                        tasks.append(json.loads(line))
+                    except json.JSONDecodeError as e:
+                        print(f"Error in line {line_num}: {e}")
+                        print(f"Problematic line: {line}")
         
         # initialize vector db
         if not self.vector_db:
             self.initialize_vector_db()
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            future_to_task = {executor.submit(self.run_data_generation, task, utils.generate_query(*task), ai_vendor, num_results): task for task in tasks}
+            future_to_task = {executor.submit(self.run_data_generation, task, utils.generate_query(task), ai_vendor, num_results): task for task in tasks}
 
             for future in concurrent.futures.as_completed(future_to_task):
                 task = future_to_task[future]
                 try:
                     completion = future.result()
-                    logger.info(f"Category: {task[0]}, SubCategory: {task[1]}, Task: {task[2]}")
+                    logger.info(f"Category: {task['Category']}, SubCategory: {task['SubCategory']}, Task: {task['Task']}")
                     logger.info("Completion: {}".format(completion))
                 except Exception as e:
-                    logger.error(f"Error processing task {task[0]}: {str(e)}")
+                    logger.error(f"Error processing task {task['Category']}: {str(e)}")
                 # Introduce a small delay between tasks (e.g., 0.1 seconds)
                 time.sleep(0.1)
 
@@ -259,10 +275,11 @@ if __name__ == "__main__":
     parser.add_argument("--num_results", type=int, default=10, help="Number of top-k documents for search results")
     parser.add_argument("--num_tasks", type=int, default=10, help="Number of tasks to generate data for")
     parser.add_argument("--type", type=str, default="function_call", help="type of data generation")
+    parser.add_argument("--format", type=str, default="csv", help="format of data generation")
 
     args = parser.parse_args()
 
   # Example usage for running analysis for companies in a CSV file
     config_path = "./config.yaml"
     datagen = DataGenPipeline(config_path, args.type)
-    datagen.run_generation_pipeline(ai_vendor=args.ai_vendor, num_results=args.num_results, num_tasks=args.num_tasks)
+    datagen.run_generation_pipeline(ai_vendor=args.ai_vendor, num_results=args.num_results, num_tasks=args.num_tasks, format=args.format)

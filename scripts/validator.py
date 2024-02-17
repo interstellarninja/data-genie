@@ -1,6 +1,7 @@
 import json
-from pydantic import BaseModel, ValidationError, validator
+from pydantic import BaseModel, ValidationError, validator, create_model
 from typing import List, Dict, Literal, Optional
+from jsonschema import validate, ValidationError
 
 class FunctionDefinition(BaseModel):
     name: str
@@ -138,6 +139,62 @@ def validate_function_calls(tool_calls, function_signatures):
             failed_flag = True
     return results, failed_flag
 
+def validate_json_object(data, schema):
+
+    # Pre-process data
+    data = json.loads(json.dumps(data))
+
+    # Pre-process schema
+    schema = json.loads(json.dumps(schema))
+    
+    # Create Pydantic models and validate
+    schema_model = create_pydantic_model(schema)
+    try: 
+        schema_model(**data)
+    except ValidationError as e:
+        print(f"Validation Error: {e}")
+        return False
+
+    return True
+
+def create_pydantic_model(schema_dict, base_name="Model"):
+    fields = {}
+    for name, prop in schema_dict.items():
+        if "$ref" in prop:
+            ref_model_name = prop["$ref"].split("/")[-1]
+            fields[name] = (create_model(schema_dict[ref_model_name], base_name=ref_model_name),)
+        else:
+            fields[name] = (prop["type"],)
+    
+    model_name = f"{base_name}Model"
+    model = type(model_name, (BaseModel,), fields)
+    return model
+
+def validate_json_data(json_object, json_schema):
+    valid = True
+    
+    # Validate each item in the list against schema if it's a list
+    if isinstance(json_object, list):
+        for index, item in enumerate(json_object):
+            try:
+                validate(instance=item, schema=json_schema)
+                print(f"Item {index+1} is valid against the schema.")
+            except ValidationError as e:
+                valid = False
+                print(f"Validation failed for item {index+1}: {e}")
+    else:  # Default to validation without list
+        try:
+            validate(instance=json_object, schema=json_schema)
+            print("JSON object is valid against the schema.")
+        except ValidationError as e:
+            print("Validation failed:", e)
+            valid = False
+
+    if valid:
+        print("JSON data is valid against the schema.")
+    else:
+        print("Validation failed for JSON data.")
+    return valid
 
 
 
