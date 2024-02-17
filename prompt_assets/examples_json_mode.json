@@ -1,0 +1,32 @@
+[
+    {
+        "category": "Guidance Agents",
+        "subcategory": "Data Extraction",
+        "task": "Generate a json object to assist with a user task for a data extraction framework that processes markdown tables from text and images. The system should convert markdown data into pandas DataFrames, apply necessary pre-processing such as stripping whitespaces, and ensure the output is tidy without merging separate tables. Additionally, the system should be capable of interpreting images containing data tables, extracting the information, and representing it in markdown format with appropriate headers and descriptions."
+    },
+    {
+        "category": "Guidance Agents",
+        "subcategory": "Task Management",
+        "task": "Implement a json representation to complete a user's request using a task management agent that updates an existing task to create 20 new GIFs for the Taskbot page on a personal site and creates a new task to create an additional 20 animated GIFs after the initial task is completed. The system should handle task dependencies and include notes on the user's strategy for task completion."
+    },
+    {
+        "category": "Guidance Agents",
+        "subcategory": "Summarization",
+        "task": "Synthesize a json representation for a user task using summarization process that involves creating increasingly concise and entity-dense summaries of an article. The process should include initial verbose summaries and subsequent rewrites that integrate missing entities while maintaining the same length, ensuring a minimum entity density and no omission of previously mentioned entities."
+    },
+    {
+        "category": "Guidance Agents",
+        "subcategory": "Knowledge Graph Generation",
+        "task": "Build a json object representation for a user task using Knowledge Graph generation process that iteratively builds a graph from text chunks. The system should deduplicate nodes and edges, reuse nodes when possible, and provide visual output of the graph after each iteration and upon completion."
+    },
+    {
+        "category": "Guidance Agents",
+        "subcategory": "Semantic Search",
+        "task": "Create a json object for a user task using semantic search framework that segments search requests into a set of detailed and comprehensive queries. The system should provide tips for expanding queries, use titles to explain expected results, and ensure queries are specific and broad for effective search."
+    },
+    {
+        "category": "Guidance Agents",
+        "subcategory": "Multi-Function Agents",
+        "task": "Assist with a user task with a json object using a multi-function agent that processes both weather inquiries and Google search queries. The agent should be able to handle requests for weather information in different locations and units, as well as perform Google searches based on user queries. The system should be capable of parallel processing and provide responses in an iterable format."
+    }
+]
