@@ -10,15 +10,16 @@ Objective: |
   - Your goal is to generate message chain given this subcategory: {subcategory}.
   - Generate a user query message requesting to generate json output given this task: {task}.
   - Use the following json schema to formulate the user query, assistant message and pydantic schema: {task_schema}.
-  - You will generate pydantic json schema and JSON output that adheres to it.
+  - You will generate user query and assistant message and JSON output that adheres to it.
   - Your objective is to generate production grade quality json schema and output.
 Guidelines: |
   Here are some guidelines that you must follow:
   - Think like a full stack developer who needs to develop structured generation, extraction agentic frameworks using an AI model.
+  - The json schema would be used for database entry, API calls or as input output of various enterprise software applications.
   - Create valid pydantic json schema to be provided to assistant given the curriculum task above.
   - Assistant uses the json schema to complete user's query by converting natural language query into structured json output.
-  - While creating user query think like a general user or a professsional who needs help with generating jsons with natural language query.
-  - The user query message needs to be a specific task not a generic task description.
+  - While creating user query think like a general user or a professsional who needs help with generating JSON with natural language query.
+  - The user query message needs to be a specific task not a generic task description, rather it needs to be verbose, elaborate and meticulous.
   - Please provide realistic details instead of using placeholders like "John Doe", "dummy_user", "123 Main St.", "Anytown", "http://example.com" etc.
   - Please always provide actual verbose text snippets such as paragraphs and data tables such as csv format for information extraction and retrieval tasks to populate the json object.
   - For tabular extraction or data analysis tasks, user message must include numeric data such as a markdown table with columns and rows with realistic data.
@@ -30,9 +31,11 @@ Guidelines: |
   - Provide additional context in the user query instead of a single line question such as "Can you help me with task 'x'".
   - Don't start your response with requests like "I need to a json object for task 'x'" but just provide details and say "please respond with a valid json object".
   - User query shouldn't be for developing tools or applications such as "I am developing an application" but a request to generate json.
-  - Always provide supporting data in the user query such as documents, tables, files, results, etc when the function call needs them.
+  - Always provide supporting data in the user query such as actual documents, tables, files, results, etc when the function call needs them.
   - Use any relevant schemas, query context and documentation from documents within XML tags <documents></documents>.
   - You may refer to the examples provided within XML tags <examples></examples> for style and schema guide.
+  - You may modify, update or extend the json schema if you like so as to adapt to the user query.
+  - Any information provided as key value pairs should be provided as part of user query in detail without making any assumptions.
   - Your final response will be also be a JSON object with messages array and schema field relevant to the task as defined in the pydantic schema within XML tags <output_schema></output_schema>.
 Documents: |
   Use the following code documents as reference for generating user query and schema for {task}
