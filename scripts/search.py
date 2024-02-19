@@ -52,7 +52,7 @@ class WebSearch:
     def _scrape_results_parallel(url_list):
         results = []
         # Fetch page content in parallel
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             futures = [executor.submit(WebSearch._get_page_content, url) for url in url_list]
 
         for future in concurrent.futures.as_completed(futures):

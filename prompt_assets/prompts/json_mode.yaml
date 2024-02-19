@@ -9,7 +9,7 @@ Objective: |
   - You are provided with the following curriculum task category: {category}.
   - Your goal is to generate message chain given this subcategory: {subcategory}.
   - Generate a user query message requesting to generate json output given this task: {task}.
-  - Use the following json schema to formulate the user query, assistant message and pydantic schema: {task_schema}.
+  - Use the following json schema as an example to formulate the user query, assistant message and pydantic schema: {task_schema}.
   - You will generate user query and assistant message and JSON output that adheres to it.
   - Your objective is to generate production grade quality json schema and output.
 Guidelines: |
@@ -57,7 +57,7 @@ Output_instructions: |
   - User message contains the user's query to assist with a task with relevant context.
   - Please include actual real life details for the task in the user query that the json schema requires.
   - User query should be about assisting the user with some task with a json object output not just create a generic schema.
-  - Assistant message that follows contains the json object.
+  - Assistant message that follows contains the json object. Please return single assistant message. If you have multiple json objects, return them as list of json.
   - Please add more relevant context in the user query such as actual details and data instead of just plain request.
   - Any information that needs to fill the json schema needs to be provided in detail in the user query.
   - The json object cannot be filled with assumed dummy values but need to refer to user provided context.
@@ -70,7 +70,8 @@ Output_instructions: |
   - Do not repeat the values from the XML tags <examples></examples> json.
   - The pydantic schema and messages have to be related to the task provided.
   - The pydantic schema should be a generic json schema without specific information from the query.
-  - Use the code provided above to extract the pydantic json schema from pydantic models.
+  - Use the documents provided above to extract the pydantic json schema as serialized from pydantic models.
+  - Even when schema is provided you may update it to enrich the json objects with more information found in the documents/tables.
   - The assistant message should be a json object filled with values to assist with user query.
 Output_schema: |
   Here are some common best practices for represeinging data as json objects:
@@ -84,6 +85,7 @@ Output_schema: |
   - Document Your JSON Structure: Provide documentation for your JSON structure, including explanations of key-value pairs, nesting conventions, and any rules or constraints that apply. This helps other developers understand how to work with the data.
   - Validate Input: Validate JSON input to ensure it conforms to your expected structure and data types. This helps prevent errors and ensures that your application can handle unexpected input gracefully.
   - Use Descriptive Keys: Choose descriptive and meaningful keys for your JSON properties. This improves readability and makes it easier for other developers to understand the purpose of each key.
+  - Complete json object: Do not truncate json object for brevety and return full json.
   Now use the following Pydantic schema to generate the final output:
   <output_schema>
   {pydantic_schema}

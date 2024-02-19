@@ -44,9 +44,9 @@ class ShareGPTDatasetUploader:
                     with open(file_path) as file:
                         json_data = json.load(file)
                     
-                    converted_conversation = self.convert_to_sharegpt(json_data, turn)
+                    converted_conversation, schema = self.convert_to_sharegpt(json_data, turn)
                     if converted_conversation:
-                        output_data.append({"id": unique_id, "conversations":json.dumps(converted_conversation), "category": category, "subcategory": subcategory, "task": task})
+                        output_data.append({"id": unique_id, "conversations":json.dumps(converted_conversation), "category": category, "subcategory": subcategory, "schema": json.dumps(schema)})
         return output_data
 
     def convert_to_sharegpt(self, conversation, turn="multi"):
@@ -74,7 +74,7 @@ class ShareGPTDatasetUploader:
                  
             elif role == "assistant":
                 json_object = content
-                assistant_message = {"from": "assistant", "value": json.dumps(json_object)}
+                assistant_message = {"from": "gpt", "value": json.dumps(json_object)}
         try:
             is_valid = validate_json_data(json_object, schema_dict)
             if is_valid:
@@ -87,8 +87,8 @@ class ShareGPTDatasetUploader:
             if json_object:
                 converted_conversation.append(assistant_message)
                 print(converted_conversation)
-                return converted_conversation    
-        return None
+                return converted_conversation, schema_dict 
+        return None, None
 
     def format_and_upload_to_hub(self, turn, upload):
         sharegpt_format_data = self.prepare_sharegpt_dataset(turn)

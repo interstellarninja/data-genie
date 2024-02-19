@@ -238,8 +238,8 @@ class DataGenPipeline:
                 reader = csv.DictReader(csv_file)
                 tasks = [(row['Category'], row['SubCategory'], row['Task'], row['Schema']) for row in islice(reader, num_tasks)]
         elif format == "jsonl":
-            curriculum_csv_path = os.path.join(self.config["paths"]["curriculum_csv"], f"{self.generation_type}.jsonl")
-            with open(curriculum_csv_path, 'r') as json_file:
+            curriculum_jsonl_path = os.path.join(self.config["paths"]["curriculum_csv"], f"{self.generation_type}.jsonl")
+            with open(curriculum_jsonl_path, 'r') as json_file:
             # Initialize an empty list to store parsed JSON objects
                 tasks = []
                 # Read each line (which represents a JSON object)
