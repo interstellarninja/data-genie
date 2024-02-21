@@ -1,5 +1,6 @@
 import argparse
 import ast
+import pandas as pd
 from datasets import Dataset
 from pydantic import BaseModel, ValidationError, create_model
 import utils
@@ -45,8 +46,8 @@ class ShareGPTDatasetUploader:
                         json_data = json.load(file)
                     
                     converted_conversation, schema = self.convert_to_sharegpt(json_data, turn)
-                    if converted_conversation:
-                        output_data.append({"id": unique_id, "conversations":json.dumps(converted_conversation), "category": category, "subcategory": subcategory, "schema": json.dumps(schema)})
+                    if converted_conversation and schema:
+                        output_data.append({"id": unique_id, "conversations": converted_conversation, "category": category, "subcategory": subcategory, "schema": json.dumps(schema)})
         return output_data
 
     def convert_to_sharegpt(self, conversation, turn="multi"):
@@ -59,10 +60,7 @@ class ShareGPTDatasetUploader:
         # prepare system message with function signatures
         sys_prompt = "You are a helpful assistant that answers in JSON. Here's the json schema you must adhere to:"
         sys_prompt += f'\n<schema>\n{schema_dict}\n</schema>\n'
-        system_message = {
-            "from": "system",
-            "value": sys_prompt
-        }
+        system_message = {"from": "system", "value": sys_prompt}
         converted_conversation.append(system_message)
 
         for message in conversation["messages"]:
@@ -93,15 +91,15 @@ class ShareGPTDatasetUploader:
     def format_and_upload_to_hub(self, turn, upload):
         sharegpt_format_data = self.prepare_sharegpt_dataset(turn)
        
-        if os.path.exists("./extraction_data.json"):
-            with open("./extraction_data.json") as file:
-                extraction_data = json.load(file)
-            sharegpt_format_data += extraction_data
-        
-        dataset = Dataset.from_list(sharegpt_format_data)
+        #if os.path.exists("./extraction_data.json"):
+        #    with open("./extraction_data.json") as file:
+        #        extraction_data = json.load(file)
+        #    sharegpt_format_data += extraction_data
 
         with open(self.output_path, 'w') as file:
             json.dump(sharegpt_format_data, file)
+        
+        dataset = Dataset.from_list(sharegpt_format_data)
 
         if upload:
             print('Dataset uploaded to hub')
