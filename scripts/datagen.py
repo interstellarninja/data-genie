@@ -236,7 +236,10 @@ class DataGenPipeline:
             curriculum_csv_path = os.path.join(self.config["paths"]["curriculum_csv"], f"{self.generation_type}.csv")
             with open(curriculum_csv_path, 'r') as csv_file:
                 reader = csv.DictReader(csv_file)
-                tasks = [(row['Category'], row['SubCategory'], row['Task'], row['Schema']) for row in islice(reader, num_tasks)]
+                if self.generation_type == "function_calling":
+                    tasks = [(row['Category'], row['SubCategory'], row['Task']) for row in islice(reader, num_tasks)]
+                else:
+                    tasks = [(row['Category'], row['SubCategory'], row['Task'], row['Schema']) for row in islice(reader, num_tasks)]
         elif format == "jsonl":
             curriculum_jsonl_path = os.path.join(self.config["paths"]["curriculum_csv"], f"{self.generation_type}.jsonl")
             with open(curriculum_jsonl_path, 'r') as json_file:
@@ -271,7 +274,7 @@ class DataGenPipeline:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run data generation pipeline")
-    parser.add_argument("--ai_vendor", choices=["openai", "anthropic", "together", "anyscale"], default="openai", help="choose AI vendor (openai, anthropic, together, anyscale)")
+    parser.add_argument("--ai_vendor", choices=["openai", "anthropic", "together", "anyscale", "groq"], default="openai", help="choose AI vendor (openai, anthropic, together, anyscale, groq)")
     parser.add_argument("--num_results", type=int, default=10, help="Number of top-k documents for search results")
     parser.add_argument("--num_tasks", type=int, default=10, help="Number of tasks to generate data for")
     parser.add_argument("--type", type=str, default="function_call", help="type of data generation")

@@ -4,6 +4,7 @@ from schema import OutputSchema
 
 #import together
 from openai import OpenAI, AzureOpenAI
+from groq import Groq
 #from anthropic import Anthropic
 
 class AIUtilities:
@@ -27,6 +28,9 @@ class AIUtilities:
         self.anyscale_api_key = os.getenv("ANYSCALE_API_KEY")
         self.anyscale_model = os.getenv("ANYSCALE_MODEL")
 
+        self.groq_api_key = os.getenv("GROQ_API_KEY")
+        self.groq_model = os.getenv("GROQ_MODEL")
+
         self.ouput_schema = OutputSchema.schema_json()
 
     def run_ai_completion(self, prompt, ai_vendor):
@@ -40,6 +44,8 @@ class AIUtilities:
             return self.run_together_completion(prompt)
         elif ai_vendor == "anyscale":
             return self.run_anyscale_completion(prompt)
+        elif ai_vendor == "groq":
+            return self.run_groq_completion(prompt)
         else:
             return "Invalid AI vendor"
     
@@ -182,6 +188,27 @@ class AIUtilities:
             return response["choices"][0]["message"]["content"]
         except Exception as e:
             return str(e)
+        
+    def run_groq_completion(self, prompt):
+        try:
+            client = Groq(
+                # This is the default and can be omitted
+                api_key=self.groq_api_key,
+            )
+
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    }
+                ],
+                model=self.groq_model,
+            )
+            return chat_completion.choices[0].message.content
+        except Exception as e:
+            return str(e)
+
 def main():
     load_dotenv()  # Load environment variables from .env file
 
