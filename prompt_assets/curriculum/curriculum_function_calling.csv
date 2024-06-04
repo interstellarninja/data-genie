@@ -430,70 +430,50 @@ OpenAI API Integration,Image Captioning with OpenAI,Implement Image Captioning u
 OpenAI API Integration,Visual Search Engines with OpenAI,Build Visual Search Engines using OpenAI Embedding Models
 OpenAI API Integration,Image Generation from Text with DALL-E,Generate Images from Text Descriptions using DALL-E and OpenAI API
 OpenAI API Integration,Embedding-based Image Retrieval,Retrieve Images based on Embeddings using OpenAI API
-Use Apps,Order Food,Doordash,Food delivery apps
-Use Apps,Call a Ride,Uber,Ride-hailing apps
-Use Apps,Play music,Music apps
-Use Apps,Watch videos,Video streaming apps
-Use Apps,Send messages,Messaging apps
-Use Apps,Make calls,Calling apps
-Use Apps,Use social media apps,Social media apps
-Use Apps,Read News,News Apps
-Use Apps,Check Weather,Weather Apps
-Use Apps,Explore Maps,Navigation Apps
-Use Apps,Learn Languages,Language Learning Apps
-Use Apps,Stay Fit,Fitness Apps
-Use Apps,Discover Recipes,Cooking and Recipe Apps
-Use Apps,Capture Moments,Photo and Video Apps
-Use Apps,Learn Skills,Educational Apps
-Use Apps,Discover Books,Reading Apps
-Use Apps,Manage Finances,Finance and Budgeting Apps
-Use Apps,Track Health,Health and Wellness Apps
-Use Apps,Explore Art,Art and Creativity Apps
-Use Apps,Plan Travel,Travel Planning Apps
-Use Apps,Find Jobs,Job Search Apps
-Use Apps,Discover Events,Event Discovery Apps
-Use Apps,Explore Fashion,Fashion and Shopping Apps
-Use Apps,Discover Podcasts,Podcast Apps
-Use Apps,Play Games,Mobile Gaming Apps
-Use Apps,Connect with Professionals,Professional Networking Apps
-Use Apps,Discover Local Deals,Local Deals and Coupons Apps
-Use Apps,Learn Instruments,Music Learning Apps
-Use Apps,Manage Time,Time Management Apps
-Use Apps,Discover Home Decor,Home Decor and Design Apps
-Use Apps,Explore Astronomy,Astronomy Apps
-Use Apps,Discover Comedy,Comedy and Entertainment Apps
-Use Apps,Learn Coding,Coding and Programming Apps
-Use Apps,Practice Meditation,Meditation Apps
-Use Apps,Explore Science,Science and Exploration Apps
-Use Apps,Manage Passwords,Password Manager Apps
-Use Apps,Discover Wildlife,Wildlife and Nature Apps
-Use Apps,Track Expenses,Expense Tracking Apps
-Use Apps,Explore Virtual Reality,Virtual Reality Apps
-Use Apps,Practice Yoga,Yoga Apps
-Use Apps,Explore Astronomy,Astronomy Apps
-Use Apps,Discover Comedy,Comedy and Entertainment Apps
-Use Apps,Learn Coding,Coding and Programming Apps
-Use Apps,Practice Meditation,Meditation Apps
-Use Apps,Explore Science,Science and Exploration Apps
-Use Apps,Manage Passwords,Password Manager Apps
-Use Apps,Discover Wildlife,Wildlife and Nature Apps
-Use Apps,Track Expenses,Expense Tracking Apps
-Use Apps,Explore Virtual Reality,Virtual Reality Apps
-Use Apps,Practice Yoga,Yoga Apps
-Use Apps,Plan Home Renovation,Home Renovation Apps
-Use Apps,Discover Gadgets,Tech and Gadget Discovery Apps
-Use Apps,Explore Astronomy,Astronomy Apps
-Use Apps,Discover Comedy,Comedy and Entertainment Apps
-Use Apps,Learn Coding,Coding and Programming Apps
-Use Apps,Practice Meditation,Meditation Apps
-Use Apps,Explore Science,Science and Exploration Apps
-Use Apps,Manage Passwords,Password Manager Apps
-Use Apps,Discover Wildlife,Wildlife and Nature Apps
-Use Apps,Track Expenses,Expense Tracking Apps
-Use Apps,Explore Virtual Reality,Virtual Reality Apps
-Use Apps,Practice Yoga,Yoga Apps
-Use Apps,Plan Home Renovation,Home Renovation Apps
-Use Apps,Discover Gadgets,Tech and Gadget Discovery Apps
+Category,SubCategory,Task
+Use Apps,Food delivery apps,Order Food from Doordash
+Use Apps,Ride-hailing apps,Call a Uber
+Use Apps,Music apps,Play music on Spotify
+Use Apps,Video streaming apps,Watch videos on Youtube
+Use Apps,Messaging apps,Send messages on Whatsapp
+Use Apps,Calling apps,Make calls on Viber
+Use Apps,Social media apps,Share a post on Twitter
+Use Apps,News Apps,Read News on Apple News
+Use Apps,Weather Apps,Check Weather on AccuWeather
+Use Apps,Navigation Apps,Get direction on Google Maps
+Use Apps,Language Learning Apps,Learn French on DuoLingo
+Use Apps,Stay Fit,Track fitness on Fitbit
+Use Apps,Cooking and Recipe Apps,Discover Recipes on Tasty
+Use Apps,Photo and Video Apps,Capture Moments on Snapchat
+Use Apps,Educational Apps,Learn Skills on Khan Academy
+Use Apps,Reading Apps,Discover Books on Kindle
+Use Apps,Finance and Budgeting Apps,Manage Finances on Mint
+Use Apps,Health and Wellness Apps,Track Health on MyFitnessPal
+Use Apps,Art and Creativity Apps,Explore Art on Prisma
+Use Apps,Travel Planning Apps,Plan Travel on Kayak
+Use Apps,Job Search Apps,Find Jobs on Indeed
+Use Apps,Job Search Apps,Discover Events on Eventbrite
+Use Apps,Fashion and Shopping Apps,Explore Fashion on Asos
+Use Apps,Podcast Apps,Discover Podcasts on Apple Podcasts
+Use Apps,Mobile Gaming Apps,Play Games on Candy Crush Saga
+Use Apps,Professional Networking Apps,Connect with Professionals on LinkedIn
+Use Apps,Local Deals and Coupons Apps,Discover Local Deals on Groupon
+Use Apps,Music Learning Apps,Learn Guitar on Ultimate Guitar Tabs
+Use Apps,Time Management Apps,Manage Time on Todoist
+Use Apps,Home Decor and Design Apps,Discover Home Decor on Wayfair
+Use Apps,Astronomy Apps,Explore Astronomy on SkyView
+Use Apps,Comedy and Entertainment Apps,Discover Comedy on Netflix
+Use Apps,Coding and Programming Apps,Learn Python Programming on SoloLearn
+Use Apps,Meditation Apps,Practice Meditation on Calm
+Use Apps,Science and Exploration Apps,Explore Science on NASA App
+Use Apps,Password Manager Apps,Manage Passwords on 1Password
+Use Apps,Wildlife and Nature Apps,Discover Wildlife on National Geographic
+Use Apps,Expense Tracking Apps,Track Expenses on Expensify
+Use Apps,Virtual Reality Apps,Explore Virtual Reality on Google Cardboard
+Use Apps,Yoga Apps,Practice Yoga on Down Dog
+Use Apps,Astronomy Apps,Explore Astronomy on SkyView
+Use Apps,Home Renovation Apps,Plan Home Renovation on Houzz
+Use Apps,Tech and Gadget Discovery Apps,Discover Gadgets on The Verge
 Information Extraction,JSON schema,Pydantic
 Information Extraction,Yaml schema,Jinja
 Information Extraction,XML parsing,ElementTree
