@@ -658,6 +658,7 @@ Git Operations,Resolve merge conflicts,Conflict resolution
 Git Operations,Revert changes,Reverting changes
 Git Operations,Tag code versions,Version tagging
 Git Operations,Interact with remote repositories,Remote collaboration
+Git Operations,Review changes,Using git diff
 Data Processing,Data Cleaning,Data cleaning techniques
 Data Processing,Data Transformation,Data transformation methods
 Data Processing,Data Aggregation,Data aggregation techniques
