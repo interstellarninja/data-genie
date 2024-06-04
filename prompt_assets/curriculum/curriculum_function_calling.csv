@@ -339,7 +339,7 @@ DevOps,Release Management,Coordinate and Manage Software Releases
 DevOps,Automated Testing,Implement Automated Testing in CI/CD Pipelines
 DevOps,Continuous Deployment,Automate the Deployment Process
 DevOps,Version Control,Utilize Version Control Systems
-DevOps,Container Orchestration,Implement Container Orchestration (e.g., Kubernetes)
+DevOps,Container Orchestration,Implement Container Orchestration (e.g. Kubernetes)
 DevOps,Serverless Architecture,Explore and Implement Serverless Architectures
 DevOps,Configuration Management,Manage System Configurations with Tools like Ansible
 DevOps,Performance Monitoring,Implement Performance Monitoring in CI/CD Pipelines
