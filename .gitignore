@@ -1,0 +1,6 @@
+# Python stuff
+venv/ 
+*.pyc
+
+# Ignore logs
+*.log
