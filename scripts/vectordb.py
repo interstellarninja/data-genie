@@ -3,16 +3,22 @@ import utils
 import csv
 from pathlib import Path
 from dotenv import load_dotenv
+
 from langchain.document_loaders import JSONLoader
 from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain_community.embeddings import OllamaEmbeddings
 from langchain.vectorstores.redis import Redis
 
 class VectorDB:
-    def __init__(self):
+    def __init__(self, local_embeddings=False):
         self.rds = None
-        self.embeddings = OpenAIEmbeddings(api_key=os.getenv("OPENAI_KEY"))
         self.redis_url = os.getenv("REDIS_URL")
         self.index_name = os.getenv("INDEX_NAME")
+
+        if local_embeddings:
+            self.embeddings = OllamaEmbeddings(model="snowflake-arctic-embed:137m")
+        else:
+            self.embeddings = OpenAIEmbeddings(api_key=os.getenv("OPENAI_KEY"))
     
     def load_vector_store(self, schema_path):
         schema = utils.load_yaml(schema_path)
@@ -71,7 +77,7 @@ if __name__ == "__main__":
     load_dotenv()
 
     # Create an instance of the VectorDB class
-    vector_db = VectorDB()
+    vector_db = VectorDB(local_embeddings=True)
 
      # Load configuration from YAML file
     config_path = "./config.yaml"
