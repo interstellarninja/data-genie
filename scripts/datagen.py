@@ -44,7 +44,7 @@ logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
 class DataGenPipeline:
-    def __init__(self, config_path, type):
+    def __init__(self, config_path, type, local_embeddings):
         # load config
         with open(config_path, "r") as f:
             self.config = yaml.safe_load(f)
@@ -52,6 +52,7 @@ class DataGenPipeline:
         self.ai_utilities = AIUtilities()
         self.web_search_client = WebSearch()
         self.vector_db = None
+        self.local_embeddings = local_embeddings
         self.file_write_lock = threading.Lock()
         self.vector_db_lock = threading.Lock()
 
@@ -91,7 +92,7 @@ class DataGenPipeline:
             schema_path = self.config["paths"]["redis_schema"]
             examples_path = os.path.join(self.config["paths"]["examples_path"], self.generation_type)
             results_path = self.config["paths"]["results_corrected"]
-            self.vector_db = VectorDB()
+            self.vector_db = VectorDB(local_embeddings=self.local_embeddings)
             try:
                 self.vector_db.load_vector_store(schema_path)
                 print("Existing VectorDB loaded successfully.")
@@ -163,11 +164,12 @@ class DataGenPipeline:
     
     @retry(wait=wait_random_exponential(multiplier=1, max=30), stop=stop_after_attempt(3))
     def run_data_generation(self, task, query, ai_vendor, num_results, combined_documents=None):
-        print(task['SubCategory'])
+        logger.info(f"Generating dataset for subcategory: {task['SubCategory']}")
         # search results folder path
         max_length = 65
-        if len(task['Task']) > max_length:
-            trunc_task = task['Task'][:max_length - 10] 
+        trunc_task = task['Task']
+        if len(trunc_task) > max_length:
+            trunc_task = trunc_task[:max_length - 10] 
         trunc_task = utils.clean_file_path(trunc_task)
         today_date = datetime.date.today()
         folder_name = f"search_results/{today_date}"
@@ -177,17 +179,19 @@ class DataGenPipeline:
          # Create a folder for each task if it doesn't exist
         task_desc = f'{task["Category"]}_{task["SubCategory"]}_{trunc_task}'
         task_desc = task_desc.replace(' ', '_')
+        logger.info(f"Task description: {task_desc}")
         results_path = f"results/{ai_vendor}_{today_date}"
         results_path = os.path.join(os.getcwd(), results_path, task["Category"], task["SubCategory"])
         results_path = results_path.replace(' ', '_')
         os.makedirs(results_path, exist_ok=True)
-        print(results_path)
+        logger.info(f"Results path: {results_path}")
         file_path = os.path.join(results_path, f"{trunc_task}.json")
         file_path = file_path.replace(' ', '_')
         # Check if the file already exists
         if not os.path.exists(file_path):
             ctx_len = self.ai_utilities.get_ai_context_length(ai_vendor)
-            char_limit = (int(ctx_len) - 8000) * 2
+            logger.info(f"The context length of the current modle is {ctx_len}")
+            char_limit = (int(ctx_len) - 4000) * 2
             logger.info(f"The character limit for documents is:{char_limit}")
 
             if combined_documents is None:
@@ -197,8 +201,9 @@ class DataGenPipeline:
             print(combined_examples)
             
             # Set output schema
-            if self.generation_type == "function_call":
+            if self.generation_type == "function_calling":
                 output_schema = OutputSchema.schema_json()
+                print(OutputSchema.schema_json(indent=2))
             elif self.generation_type == "json_mode":
                 output_schema = JsonModeOutput.schema_json()
                 print(JsonModeOutput.schema_json(indent=2))
@@ -210,7 +215,7 @@ class DataGenPipeline:
                 "category": task['Category'],
                 "subcategory": task['SubCategory'],
                 "task": task['Task'], 
-                "task_schema": task['Schema'],
+                "task_schema": task['Schema'] if self.generation_type=="json_mode" else None,
                 "doc_list": combined_documents,
                 "examples": combined_examples,
                 "pydantic_schema": output_schema,
@@ -237,9 +242,10 @@ class DataGenPipeline:
             with open(curriculum_csv_path, 'r') as csv_file:
                 reader = csv.DictReader(csv_file)
                 if self.generation_type == "function_calling":
-                    tasks = [(row['Category'], row['SubCategory'], row['Task']) for row in islice(reader, num_tasks)]
+                    tasks = [{ "Category": row['Category'], "SubCategory": row['SubCategory'], "Task": row['Task'] } for row in islice(reader, num_tasks)]
+                    print(tasks[0])
                 else:
-                    tasks = [(row['Category'], row['SubCategory'], row['Task'], row['Schema']) for row in islice(reader, num_tasks)]
+                    tasks = [{ "Category": row['Category'], "SubCategory": row['SubCategory'], "Task": row['Task'], "Schema": row['Schema'] } for row in islice(reader, num_tasks)]
         elif format == "jsonl":
             curriculum_jsonl_path = os.path.join(self.config["paths"]["curriculum_csv"], f"{self.generation_type}.jsonl")
             with open(curriculum_jsonl_path, 'r') as json_file:
@@ -277,12 +283,13 @@ if __name__ == "__main__":
     parser.add_argument("--ai_vendor", choices=["openai", "anthropic", "together", "anyscale", "groq"], default="openai", help="choose AI vendor (openai, anthropic, together, anyscale, groq)")
     parser.add_argument("--num_results", type=int, default=10, help="Number of top-k documents for search results")
     parser.add_argument("--num_tasks", type=int, default=10, help="Number of tasks to generate data for")
-    parser.add_argument("--type", type=str, default="function_call", help="type of data generation")
+    parser.add_argument("--type", type=str, default="function_calling", help="type of data generation")
     parser.add_argument("--format", type=str, default="csv", help="format of data generation")
+    parser.add_argument("--local_embeddings", type=bool, default=True)
 
     args = parser.parse_args()
 
   # Example usage for running analysis for companies in a CSV file
     config_path = "./config.yaml"
-    datagen = DataGenPipeline(config_path, args.type)
+    datagen = DataGenPipeline(config_path, args.type, args.local_embeddings)
     datagen.run_generation_pipeline(ai_vendor=args.ai_vendor, num_results=args.num_results, num_tasks=args.num_tasks, format=args.format)
