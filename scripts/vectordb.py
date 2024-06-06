@@ -14,9 +14,9 @@ class VectorDB:
         self.rds = None
         self.redis_url = os.getenv("REDIS_URL")
         self.index_name = os.getenv("INDEX_NAME")
-
+        self.embedding_model = os.getenv("OLLAMA_EMBED_MODEL")
         if local_embeddings:
-            self.embeddings = OllamaEmbeddings(model="snowflake-arctic-embed:137m")
+            self.embeddings = OllamaEmbeddings(model=self.embedding_model)
         else:
             self.embeddings = OpenAIEmbeddings(api_key=os.getenv("OPENAI_KEY"))
     
