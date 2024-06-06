@@ -56,6 +56,8 @@ class AIUtilities:
             return os.getenv("AZURE_OPENAI_CONTEXT_LENGTH")
         elif ai_vendor == "anthropic":
             return os.getenv("ANTHROPIC_CONTEXT_LENGTH")
+        elif ai_vendor == "groq":
+            return os.getenv("GROQ_CONTEXT_LENGTH")
         elif ai_vendor == "together":
             return os.getenv("TOGETHER_CONTEXT_LENGTH")
         elif ai_vendor == "anyscale":
@@ -205,6 +207,7 @@ class AIUtilities:
                 ],
                 model=self.groq_model,
             )
+            print(chat_completion)
             return chat_completion.choices[0].message.content
         except Exception as e:
             return str(e)
