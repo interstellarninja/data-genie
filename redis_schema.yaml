@@ -18,6 +18,6 @@ text:
 vector:
 - algorithm: FLAT
   datatype: FLOAT32
-  dims: 1536
+  dims: 768
   distance_metric: COSINE
   name: content_vector
